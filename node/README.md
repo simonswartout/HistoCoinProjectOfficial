@@ -91,6 +91,8 @@ Key flags:
 - `--no-append-artifacts` turns off the automatic artifact-to-registry sync.
 - `--llama-model llama3.1` and `--llama-endpoint http://localhost:11434/api/generate` configure the Llama classifier (defaults assume Ollama + `llama3`).
 - `--disable-llama` skips Llama validation entirely.
+- `--atlas-url https://worker.example.com` and `--atlas-key sk_live_...` push each discovery to the Cloudflare worker so the static atlas can ingest it live.
+- `--disable-atlas-sync` stops the worker upload step (fallbacks to local-only behavior).
 
 ### Llama 3 validation
 
@@ -103,6 +105,10 @@ npm run dev -- run --llama-model llama3 --llama-endpoint http://localhost:11434/
 ```
 
 For each artifact, the node asks Llama for a JSON verdict (`historical` vs `reject`). Rejected artifacts are skipped before submission, and successful verdicts are logged in the payload metadata for future validator review. Disable the step via `--disable-llama` if you do not have a local model.
+
+## Atlas Worker Sync
+
+Set `ATLAS_API_URL` to your deployed Cloudflare Worker (for example `https://histocoin-atlas.workers.dev/api`) and `ATLAS_API_KEY` to the shared bearer token that worker expects. Every accepted source and artifact will be mirrored to the worker so the static atlas map can read live data without needing a site rebuild. Pass `--disable-atlas-sync` (or omit the env vars) if you want purely local runs.
 
 ## Packaged Download
 

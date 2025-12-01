@@ -46,6 +46,7 @@ HistoCoinProjectOfficial/
 │   ├─ README.md           # Usage instructions
 │   ├─ package.json        # TypeScript workspace for miners
 │   └─ src/                # CLI + scraper + CC0 heuristics
+├─ worker-atlas/           # Cloudflare Worker that serves live atlas data
 ├─ scripts/                # Helper scripts (verify.sh, migrations)
 ├─ docker-compose.yml      # Orchestration for dev (master + db)
 ├─ README.md               # **This file**
@@ -161,6 +162,14 @@ Global source index helpers:
 Prefer not to build locally? Download `downloads/histograph-node.zip` (served on the GitHub Pages site) and run `node cli/index.js` from the unzipped folder; it now ships with the compiled CLI, production `node_modules` (cheerio/commander/zod already installed), and the `setup-llama.sh` helper so you can trigger `ollama pull llama3` with one command.
 
 See `node/README.md` for additional options, packaging, and roadmap items. When you do need to rebuild the downloadable archive locally, run `./scripts/build_download.sh` to compile the CLI, sync configs, and regenerate `downloads/histograph-node.zip` automatically.
+
+## Live Atlas Data (Cloudflare Worker)
+
+- `worker-atlas/` contains a lightweight Worker that persists sources/artifacts in KV and exposes `/api/atlas`, `/api/artifacts`, and `/api/sources`. Follow its README to bind KV namespaces (`ATLAS_SOURCES`, `ATLAS_ARTIFACTS`), set `ATLAS_API_KEY`, and deploy via `npm run deploy`.
+- Ship the Worker URL to the static site by either updating `<html data-atlas-endpoint>` in `index.html` or editing `config/atlas-config.json`. The frontend now loads that file automatically and falls back to `config/atlas-index.json` (plus the inline seed data) if the Worker is unreachable.
+- Give node operators the Worker URL and bearer key. They can export `ATLAS_API_URL` / `ATLAS_API_KEY` or pass `--atlas-url` / `--atlas-key` to mirror every accepted discovery back to the Worker.
+- Regenerate the static snapshot at any time with `./scripts/pull_atlas_snapshot.sh https://worker-atlas.<subdomain>.workers.dev/api/atlas`, which overwrites `config/atlas-index.json` for offline demos.
+- Use Cloudflare’s dashboard (Workers → `worker-atlas`) to tail logs, watch KV sizes, and confirm inbound submissions.
 
 ---
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en" class="scroll-smooth" data-atlas-endpoint="https://worker-atlas.YOUR_WORKERS_SUBDOMAIN.workers.dev">
 
 <head>
     <meta charset="UTF-8">
@@ -346,21 +346,38 @@
                 <section id="atlasView" data-view="atlas" class="h-full flex flex-col">
                     <div id="atlasMap" class="flex-1"></div>
                     <div class="glass p-6 border-t border-white/5">
-                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                            <div>
-                                <p class="text-xs uppercase tracking-[0.4em] text-ember">Timeline Window</p>
-                                <p class="text-lg" id="timelineLabel">All years</p>
-                            </div>
-                            <div class="flex-1">
-                                <input id="timelineSlider" type="range" min="-5000" max="2025" step="25"
-                                    class="w-full accent-ember">
-                                <div class="flex justify-between text-xs text-gray-500 mt-2">
-                                    <span>5000&nbsp;BCE</span>
-                                    <span>2000&nbsp;BCE</span>
-                                    <span>0</span>
-                                    <span>1200&nbsp;CE</span>
-                                    <span>2025&nbsp;CE</span>
+                        <div class="flex flex-col gap-6">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                <div>
+                                    <p class="text-xs uppercase tracking-[0.4em] text-ember">Timeline Window</p>
+                                    <p class="text-lg" id="timelineLabel">All years</p>
                                 </div>
+                                <div class="text-xs text-gray-500 uppercase tracking-[0.3em]">
+                                    Drag both handles to focus on a specific era
+                                </div>
+                            </div>
+                            <div class="grid gap-6 md:grid-cols-2">
+                                <div>
+                                    <label for="timelineStartSlider"
+                                        class="text-xs uppercase tracking-[0.4em] text-gray-400">Start</label>
+                                    <input id="timelineStartSlider" type="range" min="-5000" max="2025" step="25"
+                                        class="w-full accent-ember">
+                                    <p class="text-xs text-gray-500 mt-1" id="timelineStartLabel">5000&nbsp;BCE</p>
+                                </div>
+                                <div>
+                                    <label for="timelineEndSlider"
+                                        class="text-xs uppercase tracking-[0.4em] text-gray-400">End</label>
+                                    <input id="timelineEndSlider" type="range" min="-5000" max="2025" step="25"
+                                        class="w-full accent-ember">
+                                    <p class="text-xs text-gray-500 mt-1" id="timelineEndLabel">2025&nbsp;CE</p>
+                                </div>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-500">
+                                <span>5000&nbsp;BCE</span>
+                                <span>2000&nbsp;BCE</span>
+                                <span>0</span>
+                                <span>1200&nbsp;CE</span>
+                                <span>2025&nbsp;CE</span>
                             </div>
                         </div>
                     </div>
@@ -409,10 +426,18 @@
         if (window.lucide?.createIcons) {
             window.lucide.createIcons();
         }
+        const htmlAtlasEndpoint = document.documentElement?.dataset?.atlasEndpoint ?? "";
+        const scriptedAtlasEndpoint = window.HISTOCOIN_ATLAS_ENDPOINT ?? window.HISTOCOIN_ATLAS_API ?? "";
+        let atlasRemoteEndpoint = deriveAtlasEndpoint(scriptedAtlasEndpoint || htmlAtlasEndpoint);
+        const ATLAS_STATIC_URL = "config/atlas-index.json";
+        const ATLAS_CONFIG_URL = "config/atlas-config.json";
         const atlasModal = document.getElementById("atlasModal");
         const atlasTriggers = document.querySelectorAll("[data-open-atlas]");
         const closeAtlasBtn = document.getElementById("closeAtlasBtn");
-        const timelineSlider = document.getElementById("timelineSlider");
+        const timelineStartSlider = document.getElementById("timelineStartSlider");
+        const timelineEndSlider = document.getElementById("timelineEndSlider");
+        const timelineStartLabel = document.getElementById("timelineStartLabel");
+        const timelineEndLabel = document.getElementById("timelineEndLabel");
         const timelineLabel = document.getElementById("timelineLabel");
         const timelineReset = document.getElementById("timelineReset");
         const viewButtons = document.querySelectorAll(".atlas-tab");
@@ -422,39 +447,207 @@
         const artifactSearchInput = document.getElementById("artifactSearchInput");
         const artifactStartYear = document.getElementById("artifactStartYear");
         const artifactEndYear = document.getElementById("artifactEndYear");
-        const TIMELINE_MAX = Number(timelineSlider?.max ?? 2025);
+        const TIMELINE_MIN = Number(timelineStartSlider?.min ?? -5000);
+        const TIMELINE_MAX = Number(timelineEndSlider?.max ?? 2025);
         let atlasMap;
-        let markers = [];
+        let artifactMarkers = [];
         let activeView = "atlas";
+        let atlasDataLoaded = false;
 
-        if (timelineSlider) {
-            timelineSlider.value = timelineSlider.max || "2025";
+        if (timelineStartSlider) {
+            timelineStartSlider.value = timelineStartSlider.min || `${TIMELINE_MIN}`;
         }
+        if (timelineEndSlider) {
+            timelineEndSlider.value = timelineEndSlider.max || `${TIMELINE_MAX}`;
+        }
+        syncYearInputsFromSlider();
+        updateTimelineLabel();
 
-        const MOCK_ARTIFACTS = [
-            { title: "Sumerian Trade Tablet", year: -3200, lat: 30.964, lng: 46.105, location: "Uruk", summary: "Clay ledger documenting grain shipments." },
-            { title: "Harappan Bead Workshop", year: -2100, lat: 28.6139, lng: 77.209, location: "Indus Valley", summary: "Shell bead catalog uncovered near Rakhigarhi." },
-            { title: "Benin Bronze Plaque", year: 1550, lat: 6.34, lng: 5.62, location: "Benin City", summary: "Royal court relief with Portuguese regalia." },
-            { title: "Andean Textile Fragment", year: 1450, lat: -13.5, lng: -72.0, location: "Cusco", summary: "Dyed camelid fibers woven in stepped motifs." },
-            { title: "Trade Beads Cache", year: 1750, lat: 51.5074, lng: -0.1278, location: "Thames", summary: "Recovered ballast crate with Venetian glass beads." },
-            { title: "Ming Dynasty Scroll", year: 1620, lat: 34.3416, lng: 108.9398, location: "Xi'an", summary: "Ink landscape attributed to Wen Zhenming school." },
-            { title: "Arctic Expedition Journal", year: 1898, lat: 64.1466, lng: -21.9426, location: "Reykjavík", summary: "Field diary from Guðmundsson sled survey." },
-            { title: "Civil Rights Photo Archive", year: 1964, lat: 33.749, lng: -84.388, location: "Atlanta", summary: "35mm negatives from SNCC organizers." },
+        const FALLBACK_ARTIFACTS = [
+            { id: "fallback-1", title: "Sumerian Trade Tablet", year: -3200, lat: 30.964, lng: 46.105, region: "Uruk", sourceName: "Fallback", summary: "Clay ledger documenting grain shipments.", caption: "Transport log etched into clay." },
+            { id: "fallback-2", title: "Harappan Bead Workshop", year: -2100, lat: 28.6139, lng: 77.209, region: "Indus Valley", sourceName: "Fallback", summary: "Shell bead catalog uncovered near Rakhigarhi.", caption: "Workshop inventory plate." },
+            { id: "fallback-3", title: "Benin Bronze Plaque", year: 1550, lat: 6.34, lng: 5.62, region: "Benin City", sourceName: "Fallback", summary: "Royal court relief with Portuguese regalia.", caption: "Oba procession cast in brass." },
+            { id: "fallback-4", title: "Andean Textile Fragment", year: 1450, lat: -13.5, lng: -72.0, region: "Cusco", sourceName: "Fallback", summary: "Dyed camelid fibers woven in stepped motifs.", caption: "Quipu cord dyed with cochineal." },
+            { id: "fallback-5", title: "Trade Beads Cache", year: 1750, lat: 51.5074, lng: -0.1278, region: "London", sourceName: "Fallback", summary: "Recovered ballast crate with Venetian glass beads.", caption: "Venetian beads catalog tag." },
+            { id: "fallback-6", title: "Arctic Expedition Journal", year: 1898, lat: 64.1466, lng: -21.9426, region: "Reykjavík", sourceName: "Fallback", summary: "Field diary from Guðmundsson sled survey.", caption: "Graphite log from sled survey." },
+            { id: "fallback-7", title: "Civil Rights Photo Archive", year: 1964, lat: 33.749, lng: -84.388, region: "Atlanta", sourceName: "Fallback", summary: "35mm negatives from SNCC organizers.", caption: "Contact sheet annotated by SNCC." }
         ];
 
-        const MOCK_SOURCES = [
-            { name: "Smithsonian Open Access", url: "https://www.si.edu/openaccess", region: "Global", type: "Institution", lastSync: "2025-11-08" },
-            { name: "Europeana Foundation", url: "https://www.europeana.eu", region: "Europe", type: "Consortium", lastSync: "2025-11-26" },
-            { name: "Digital Benin", url: "https://digitalbenin.org", region: "West Africa", type: "Community", lastSync: "2025-10-30" },
-            { name: "Andean Textile Archive", url: "https://andeantextiles.org", region: "South America", type: "Research Lab", lastSync: "2025-11-19" },
-            { name: "NOAA Arctic Logs", url: "https://data.noaa.gov/arctic", region: "Arctic Circle", type: "Government", lastSync: "2025-11-14" },
-            { name: "Civil Rights Digital Library", url: "https://crdl.usg.edu", region: "North America", type: "Consortium", lastSync: "2025-11-23" },
+        const FALLBACK_SOURCES = [
+            { id: "fallback-src-1", name: "Smithsonian Open Access", url: "https://www.si.edu/openaccess", region: "Global", type: "Institution", artifactCount: 1200, status: "Live" },
+            { id: "fallback-src-2", name: "Europeana Foundation", url: "https://www.europeana.eu", region: "Europe", type: "Consortium", artifactCount: 980, status: "Live" },
+            { id: "fallback-src-3", name: "Digital Benin", url: "https://digitalbenin.org", region: "West Africa", type: "Community", artifactCount: 214, status: "Live" },
+            { id: "fallback-src-4", name: "Andean Textile Archive", url: "https://andeantextiles.org", region: "South America", type: "Research Lab", artifactCount: 96, status: "Sampling" },
+            { id: "fallback-src-5", name: "NOAA Arctic Logs", url: "https://data.noaa.gov/arctic", region: "Arctic Circle", type: "Government", artifactCount: 61, status: "Nightly" }
         ];
+
+        let atlasData = {
+            sources: FALLBACK_SOURCES,
+            artifacts: FALLBACK_ARTIFACTS,
+        };
+
+                function deriveAtlasEndpoint(rawValue) {
+                    if (typeof rawValue !== "string") return null;
+                    const trimmed = rawValue.trim();
+                    if (!trimmed) return null;
+                    if (!/^https?:/i.test(trimmed)) return null;
+                    if (/\/api\//i.test(trimmed)) {
+                        return trimmed;
+                    }
+                    return `${trimmed.replace(/\/$/, "")}/api/atlas`;
+                }
+
+        async function ensureAtlasEndpoint() {
+            if (atlasRemoteEndpoint) {
+                return atlasRemoteEndpoint;
+            }
+            try {
+                const response = await fetch(ATLAS_CONFIG_URL, { cache: "no-store" });
+                if (response.ok) {
+                    const config = await response.json();
+                    const candidate = deriveAtlasEndpoint(
+                        config.workerEndpoint || config.endpoint || config.url || config.atlasEndpoint
+                    );
+                    if (candidate) {
+                        atlasRemoteEndpoint = candidate;
+                    }
+                }
+            } catch (error) {
+                console.warn("Atlas config lookup failed", error);
+            }
+            return atlasRemoteEndpoint;
+        }
 
         function formatYear(year) {
             if (year < 0) return `${Math.abs(year)} BCE`;
             if (year === 0) return "0 CE";
             return `${year} CE`;
+        }
+
+        function getTimelineRange() {
+            const start = Number(timelineStartSlider?.value ?? TIMELINE_MIN);
+            const end = Number(timelineEndSlider?.value ?? TIMELINE_MAX);
+            return { start, end };
+        }
+
+        function updateTimelineLabel() {
+            const { start, end } = getTimelineRange();
+            const coversAll = start <= TIMELINE_MIN && end >= TIMELINE_MAX;
+            timelineLabel.textContent = coversAll ? "All years" : `${formatYear(start)} – ${formatYear(end)}`;
+            if (timelineStartLabel) timelineStartLabel.textContent = formatYear(start);
+            if (timelineEndLabel) timelineEndLabel.textContent = formatYear(end);
+        }
+
+        function clampYearValue(rawValue, fallback) {
+            const numeric = Number(rawValue);
+            if (Number.isNaN(numeric)) return fallback;
+            return Math.max(TIMELINE_MIN, Math.min(TIMELINE_MAX, numeric));
+        }
+
+        function syncYearInputsFromSlider() {
+            if (timelineStartSlider && artifactStartYear) {
+                artifactStartYear.value = timelineStartSlider.value;
+            }
+            if (timelineEndSlider && artifactEndYear) {
+                artifactEndYear.value = timelineEndSlider.value;
+            }
+        }
+
+        function syncSlidersFromInputs() {
+            if (!timelineStartSlider || !timelineEndSlider) return;
+            const start = clampYearValue(artifactStartYear?.value ?? timelineStartSlider.value, TIMELINE_MIN);
+            const end = clampYearValue(artifactEndYear?.value ?? timelineEndSlider.value, TIMELINE_MAX);
+            const normalizedStart = Math.min(start, end);
+            const normalizedEnd = Math.max(start, end);
+            timelineStartSlider.value = `${normalizedStart}`;
+            timelineEndSlider.value = `${normalizedEnd}`;
+            if (artifactStartYear) artifactStartYear.value = `${normalizedStart}`;
+            if (artifactEndYear) artifactEndYear.value = `${normalizedEnd}`;
+            updateTimelineLabel();
+        }
+
+        function handleStartSliderInput() {
+            if (!timelineStartSlider || !timelineEndSlider) return;
+            if (Number(timelineStartSlider.value) > Number(timelineEndSlider.value)) {
+                timelineEndSlider.value = timelineStartSlider.value;
+            }
+            syncYearInputsFromSlider();
+            updateTimelineLabel();
+            renderArtifactResults();
+            updateMarkers();
+        }
+
+        function handleEndSliderInput() {
+            if (!timelineStartSlider || !timelineEndSlider) return;
+            if (Number(timelineEndSlider.value) < Number(timelineStartSlider.value)) {
+                timelineStartSlider.value = timelineEndSlider.value;
+            }
+            syncYearInputsFromSlider();
+            updateTimelineLabel();
+            renderArtifactResults();
+            updateMarkers();
+        }
+
+        function handleTimelineReset() {
+            if (timelineStartSlider) {
+                timelineStartSlider.value = `${TIMELINE_MIN}`;
+            }
+            if (timelineEndSlider) {
+                timelineEndSlider.value = `${TIMELINE_MAX}`;
+            }
+            syncYearInputsFromSlider();
+            updateTimelineLabel();
+            renderArtifactResults();
+            updateMarkers();
+        }
+
+        function handleYearInputs() {
+            syncSlidersFromInputs();
+            renderArtifactResults();
+            updateMarkers();
+        }
+
+        async function ensureAtlasData(forceReload = false) {
+            if (atlasDataLoaded && !forceReload) {
+                return atlasData;
+            }
+            let resolved = false;
+            const remoteEndpoint = await ensureAtlasEndpoint();
+            if (remoteEndpoint) {
+                try {
+                    const response = await fetch(remoteEndpoint, { cache: "no-store" });
+                    if (!response.ok) {
+                        throw new Error(`Atlas worker request failed: ${response.status}`);
+                    }
+                    const payload = await response.json();
+                    const sources = Array.isArray(payload.sources) && payload.sources.length ? payload.sources : FALLBACK_SOURCES;
+                    const artifacts = Array.isArray(payload.artifacts) && payload.artifacts.length ? payload.artifacts : FALLBACK_ARTIFACTS;
+                    atlasData = { sources, artifacts };
+                    resolved = true;
+                } catch (error) {
+                    console.warn("Atlas worker unavailable; falling back to bundled data", error);
+                }
+            }
+            if (!resolved) {
+                try {
+                    const response = await fetch(ATLAS_STATIC_URL, { cache: "no-store" });
+                    if (!response.ok) {
+                        throw new Error(`Atlas index request failed: ${response.status}`);
+                    }
+                    const fileData = await response.json();
+                    const sources = Array.isArray(fileData.sources) && fileData.sources.length ? fileData.sources : FALLBACK_SOURCES;
+                    const artifacts = Array.isArray(fileData.artifacts) && fileData.artifacts.length ? fileData.artifacts : FALLBACK_ARTIFACTS;
+                    atlasData = { sources, artifacts };
+                } catch (error) {
+                    console.warn("Unable to load atlas index; reverting to inline fallback", error);
+                    atlasData = { sources: FALLBACK_SOURCES, artifacts: FALLBACK_ARTIFACTS };
+                }
+            }
+            atlasDataLoaded = true;
+            renderSourcesList();
+            renderArtifactResults();
+            updateMarkers();
+            return atlasData;
         }
 
         function setActiveView(view) {
@@ -469,7 +662,10 @@
                 btn.setAttribute("aria-pressed", String(isActive));
             });
             if (view === "atlas") {
+                ensureAtlasData();
                 ensureAtlas();
+            } else if (!atlasDataLoaded) {
+                ensureAtlasData();
             }
             timelineReset?.classList.toggle("opacity-40", view !== "atlas");
             timelineReset?.classList.toggle("pointer-events-none", view !== "atlas");
@@ -478,18 +674,22 @@
         function renderSourcesList() {
             if (!sourcesList) return;
             sourcesList.innerHTML = "";
-            MOCK_SOURCES.forEach((source) => {
+            atlasData.sources.forEach((source) => {
                 const card = document.createElement("article");
                 card.className = "glass rounded-2xl p-5 flex flex-col gap-3";
+                const sourceUrl = source.baseUrl || source.url;
                 card.innerHTML = `
-                    <div>
-                        <p class="text-sm text-gray-400 uppercase tracking-[0.3em]">${source.type}</p>
-                        <h4 class="text-lg font-semibold">${source.name}</h4>
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <p class="text-sm text-gray-400 uppercase tracking-[0.3em]">${source.type || "Source"}</p>
+                            <h4 class="text-lg font-semibold">${source.name}</h4>
+                        </div>
+                        <span class="text-sm text-ember font-semibold">${source.artifactCount ?? "—"} items</span>
                     </div>
-                    <p class="text-sm text-gray-300 break-all">${source.url}</p>
+                    <p class="text-sm text-gray-300 break-all">${sourceUrl || "Unknown URL"}</p>
                     <div class="text-xs text-gray-400 flex justify-between">
-                        <span>${source.region}</span>
-                        <span>Sync ${source.lastSync}</span>
+                        <span>${source.region ?? "Unknown region"}</span>
+                        <span>${source.status ?? "Pending"}</span>
                     </div>
                 `;
                 sourcesList.appendChild(card);
@@ -506,16 +706,17 @@
                 const parsed = Number(raw);
                 return Number.isNaN(parsed) ? fallback : parsed;
             };
-            const start = parseYearInput(artifactStartYear, -5000);
+            const start = parseYearInput(artifactStartYear, TIMELINE_MIN);
             const end = parseYearInput(artifactEndYear, TIMELINE_MAX);
-            const filtered = MOCK_ARTIFACTS.filter((artifact) => {
-                const withinRange = artifact.year >= start && artifact.year <= end;
-                const matchesTerm = !searchTerm ||
-                    artifact.title.toLowerCase().includes(searchTerm) ||
-                    artifact.summary.toLowerCase().includes(searchTerm) ||
-                    artifact.location?.toLowerCase().includes(searchTerm);
-                return withinRange && matchesTerm;
-            }).sort((a, b) => b.year - a.year);
+            const filtered = atlasData.artifacts
+                .filter((artifact) => {
+                    const hasYear = typeof artifact.year === "number";
+                    const withinRange = !hasYear || (artifact.year >= start && artifact.year <= end);
+                    const corpus = `${artifact.title} ${artifact.summary ?? ""} ${artifact.caption ?? ""} ${artifact.region ?? ""} ${artifact.sourceName ?? ""}`.toLowerCase();
+                    const matchesTerm = !searchTerm || corpus.includes(searchTerm);
+                    return withinRange && matchesTerm;
+                })
+                .sort((a, b) => (b.year ?? Number.MIN_SAFE_INTEGER) - (a.year ?? Number.MIN_SAFE_INTEGER));
 
             artifactResults.innerHTML = "";
             if (!filtered.length) {
@@ -528,12 +729,13 @@
                 row.innerHTML = `
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                         <div>
-                            <p class="text-sm text-gray-400 uppercase tracking-[0.3em]">${artifact.location || "Unknown locale"}</p>
+                            <p class="text-sm text-gray-400 uppercase tracking-[0.3em]">${artifact.region || artifact.sourceName || "Unknown locale"}</p>
                             <h4 class="text-lg font-semibold">${artifact.title}</h4>
+                            <p class="text-xs text-gray-500">${artifact.sourceName || "Unattributed"}</p>
                         </div>
-                        <p class="text-sm text-ember">${formatYear(artifact.year)}</p>
+                        <p class="text-sm text-ember">${typeof artifact.year === "number" ? formatYear(artifact.year) : "Year unknown"}</p>
                     </div>
-                    <p class="text-sm text-gray-300 mt-2">${artifact.summary}</p>
+                    <p class="text-sm text-gray-300 mt-2">${artifact.caption || artifact.summary || "No description"}</p>
                 `;
                 artifactResults.appendChild(row);
             });
@@ -568,19 +770,31 @@
 
         function updateMarkers() {
             if (!atlasMap || typeof L === "undefined") return;
-            const cutoff = Number(timelineSlider?.value ?? 2025);
-            const filtered = MOCK_ARTIFACTS.filter((item) => item.year <= cutoff);
-            markers.forEach((m) => m.remove());
-            markers = filtered.map((artifact) =>
-                L.circleMarker([artifact.lat, artifact.lng], {
-                    radius: 8,
-                    color: "#999",
-                    fillColor: "#999",
+            const { start, end } = getTimelineRange();
+            artifactMarkers.forEach((marker) => marker.remove());
+            artifactMarkers = [];
+            const dataset = Array.isArray(atlasData.artifacts) ? atlasData.artifacts : [];
+            const candidates = dataset.filter((artifact) => typeof artifact.lat === "number" && typeof artifact.lng === "number");
+            const filtered = candidates.filter((artifact) => {
+                if (typeof artifact.year !== "number") return true;
+                return artifact.year >= start && artifact.year <= end;
+            });
+            artifactMarkers = filtered.map((artifact) => {
+                const popupParts = [`<strong>${artifact.title}</strong>`];
+                if (typeof artifact.year === "number") popupParts.push(formatYear(artifact.year));
+                if (artifact.sourceName) popupParts.push(artifact.sourceName);
+                if (artifact.caption) popupParts.push(artifact.caption);
+                return L.circleMarker([artifact.lat, artifact.lng], {
+                    radius: 7,
+                    color: "#9ca3af",
+                    fillColor: "#9ca3af",
                     weight: 1,
-                    fillOpacity: 0.5,
-                }).addTo(atlasMap).bindPopup(`<strong>${artifact.title}</strong><br>${formatYear(artifact.year)}`)
-            );
-            timelineLabel.textContent = cutoff >= TIMELINE_MAX ? "All years" : `≤ ${formatYear(cutoff)}`;
+                    fillOpacity: 0.45,
+                })
+                    .addTo(atlasMap)
+                    .bindPopup(popupParts.filter(Boolean).join("<br>"));
+            });
+            updateTimelineLabel();
         }
 
         atlasTriggers.forEach((el) => el.addEventListener("click", () => {
@@ -588,17 +802,13 @@
             openModal();
         }));
         closeAtlasBtn?.addEventListener("click", closeModal);
-        timelineSlider?.addEventListener("input", updateMarkers);
-        timelineReset?.addEventListener("click", () => {
-            if (timelineSlider) {
-                timelineSlider.value = timelineSlider.max || "2025";
-            }
-            updateMarkers();
-        });
+        timelineStartSlider?.addEventListener("input", handleStartSliderInput);
+        timelineEndSlider?.addEventListener("input", handleEndSliderInput);
+        timelineReset?.addEventListener("click", handleTimelineReset);
         viewButtons.forEach((btn) => btn.addEventListener("click", () => setActiveView(btn.dataset.viewTarget)));
         artifactSearchInput?.addEventListener("input", renderArtifactResults);
-        artifactStartYear?.addEventListener("input", renderArtifactResults);
-        artifactEndYear?.addEventListener("input", renderArtifactResults);
+        artifactStartYear?.addEventListener("input", handleYearInputs);
+        artifactEndYear?.addEventListener("input", handleYearInputs);
         atlasModal?.addEventListener("click", (event) => {
             if (event.target === atlasModal) {
                 closeModal();
@@ -612,6 +822,7 @@
 
         renderSourcesList();
         renderArtifactResults();
+        ensureAtlasData();
         setActiveView("atlas");
     </script>
 </body>

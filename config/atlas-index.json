@@ -1,0 +1,168 @@
+{
+  "sources": [
+    {
+      "id": "nmaa-master",
+      "name": "Smithsonian National Museum of Asian Art",
+      "type": "Museum",
+      "region": "Washington, DC, USA",
+      "lat": 38.8885,
+      "lng": -77.023,
+      "artifactCount": 482,
+      "url": "https://asia.si.edu/explore-art-culture/collections/search/",
+      "status": "Validated"
+    },
+    {
+      "id": "europeana-open",
+      "name": "Europeana CC0 Photography",
+      "type": "Consortium",
+      "region": "The Hague, Netherlands",
+      "lat": 52.0705,
+      "lng": 4.3007,
+      "artifactCount": 1120,
+      "url": "https://www.europeana.eu/en/search?rights=cc0",
+      "status": "Streaming nightly"
+    },
+    {
+      "id": "digital-benin",
+      "name": "Digital Benin",
+      "type": "Community Archive",
+      "region": "Benin City, Nigeria",
+      "lat": 6.335,
+      "lng": 5.627,
+      "artifactCount": 214,
+      "url": "https://digitalbenin.org/",
+      "status": "Live"
+    },
+    {
+      "id": "andes-textiles",
+      "name": "Andean Textile Observatory",
+      "type": "Research Lab",
+      "region": "Cusco, Peru",
+      "lat": -13.532,
+      "lng": -71.967,
+      "artifactCount": 96,
+      "url": "https://andeantextiles.org/collections",
+      "status": "Sampling"
+    },
+    {
+      "id": "noaa-arctic",
+      "name": "NOAA Arctic Logs",
+      "type": "Government Library",
+      "region": "Anchorage, Alaska, USA",
+      "lat": 61.2181,
+      "lng": -149.9003,
+      "artifactCount": 61,
+      "url": "https://data.noaa.gov/arctic",
+      "status": "Nightly"
+    },
+    {
+      "id": "crdl",
+      "name": "Civil Rights Digital Library",
+      "type": "Consortium",
+      "region": "Atlanta, Georgia, USA",
+      "lat": 33.749,
+      "lng": -84.388,
+      "artifactCount": 307,
+      "url": "https://crdl.usg.edu/",
+      "status": "Live"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "atlas-art-001",
+      "title": "Stamp Seal of Ur",
+      "year": -2100,
+      "lat": 31.321,
+      "lng": 45.65,
+      "region": "Uruk Plain",
+      "sourceId": "nmaa-master",
+      "sourceName": "Smithsonian NMAA",
+      "summary": "Chlorite seal used to authenticate barley ledgers for the temple granary.",
+      "caption": "Chlorite seal impressed onto clay tablets to certify deliveries from Ur's canal estates."
+    },
+    {
+      "id": "atlas-art-002",
+      "title": "Maritime Silk Textile",
+      "year": 1380,
+      "lat": 29.563,
+      "lng": 106.55,
+      "region": "Chongqing",
+      "sourceId": "nmaa-master",
+      "sourceName": "Smithsonian NMAA",
+      "summary": "Brocaded silk fragment showing double-phoenix trade stamp from the Ming maritime bureau.",
+      "caption": "Stamped silk coupon issued to approve export cargo on the South China Sea junks."
+    },
+    {
+      "id": "atlas-art-003",
+      "title": "Benin Court Brass",
+      "year": 1550,
+      "lat": 6.337,
+      "lng": 5.625,
+      "region": "Benin City",
+      "sourceId": "digital-benin",
+      "sourceName": "Digital Benin",
+      "summary": "Lost-wax brass plaque showing Iyoba Idia flanked by retainers.",
+      "caption": "Royal plaque documenting coral regalia allowances for the Iyoba court."
+    },
+    {
+      "id": "atlas-art-004",
+      "title": "Transatlantic Trade Beads",
+      "year": 1745,
+      "lat": 51.5074,
+      "lng": -0.1278,
+      "region": "London",
+      "sourceId": "europeana-open",
+      "sourceName": "Europeana",
+      "summary": "Venetian glass beads recovered from ballast on the Thames foreshore.",
+      "caption": "Ledger-tagged Venetian beads destined for Gold Coast forts."
+    },
+    {
+      "id": "atlas-art-005",
+      "title": "Andean Quipu Fragment",
+      "year": 1525,
+      "lat": -13.521,
+      "lng": -71.967,
+      "region": "Sacred Valley",
+      "sourceId": "andes-textiles",
+      "sourceName": "Andean Textile Observatory",
+      "summary": "Dyed camelid fiber cords holding census values for ayllu households.",
+      "caption": "Knot cluster recording llama tribute owed after the Cusco harvest."
+    },
+    {
+      "id": "atlas-art-006",
+      "title": "Arctic Survey Log",
+      "year": 1893,
+      "lat": 64.2008,
+      "lng": -51.6789,
+      "region": "Ilulissat",
+      "sourceId": "noaa-arctic",
+      "sourceName": "NOAA Arctic Logs",
+      "summary": "Field diary from Guðmundsson sled survey across Jakobshavn Glacier.",
+      "caption": "Graphite logbook noting ice thickness and magnetometer drift."
+    },
+    {
+      "id": "atlas-art-007",
+      "title": "Freedom School Negatives",
+      "year": 1964,
+      "lat": 32.2988,
+      "lng": -90.1848,
+      "region": "Jackson, Mississippi",
+      "sourceId": "crdl",
+      "sourceName": "Civil Rights Digital Library",
+      "summary": "35mm film documenting the Freedom Summer literacy drive.",
+      "caption": "Contact sheets annotated by SNCC photo lab interns."
+    },
+    {
+      "id": "atlas-art-008",
+      "title": "Aurora Telegraph plate",
+      "year": 1903,
+      "lat": 61.2181,
+      "lng": -149.9,
+      "region": "Anchorage",
+      "sourceId": "noaa-arctic",
+      "sourceName": "NOAA Arctic Logs",
+      "summary": "Glass plate negative capturing auroral curtains during the Carnegie expedition.",
+      "caption": "Spectrograph trace annotated to calibrate telegraph blackout warnings."
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import { sleep } from "./utils.js";
 import type { MiningSource } from "./types.js";
 import { addSourceToIndex, appendArtifactToIndex, loadSourcesFromIndex } from "./sourceIndex.js";
 import { classifyArtifactWithLlama } from "./llama.js";
+import { AtlasClient } from "./atlasClient.js";
 
 interface RunOptions {
   masterUrl: string;
@@ -30,6 +31,9 @@ interface RunOptions {
   llamaEnabled: boolean;
   llamaModel: string;
   llamaEndpoint: string;
+  atlasUrl?: string;
+  atlasApiKey?: string;
+  atlasSyncEnabled: boolean;
 }
 
 const DEFAULT_INTERVAL = 30;
@@ -60,6 +64,9 @@ async function main() {
     .option("--llama-model <name>", "Meta Llama 3 model id (via Ollama or compatible endpoint)", process.env.LLAMA_MODEL ?? "llama3")
     .option("--llama-endpoint <url>", "Endpoint for llama text generation", process.env.LLAMA_ENDPOINT ?? "http://localhost:11434/api/generate")
     .option("--disable-llama", "Skip llama-based validation", false)
+    .option("--atlas-url <url>", "Atlas worker base URL", process.env.ATLAS_API_URL)
+    .option("--atlas-key <token>", "Atlas worker bearer token", process.env.ATLAS_API_KEY)
+    .option("--disable-atlas-sync", "Skip pushing discoveries to the atlas worker", false)
     .action(async (rawOpts: any) => {
       const runOpts: RunOptions = {
         masterUrl: rawOpts.masterUrl,
@@ -80,6 +87,9 @@ async function main() {
         llamaEnabled: !rawOpts.disableLlama,
         llamaModel: rawOpts.llamaModel,
         llamaEndpoint: rawOpts.llamaEndpoint,
+        atlasUrl: rawOpts.atlasUrl ?? process.env.ATLAS_API_URL,
+        atlasApiKey: rawOpts.atlasKey ?? process.env.ATLAS_API_KEY,
+        atlasSyncEnabled: rawOpts.disableAtlasSync !== true,
       };
 
       await runNode(runOpts);
@@ -118,6 +128,11 @@ async function main() {
 async function runNode(options: RunOptions) {
   logger.info("Node starting", { masterUrl: options.masterUrl, nodeId: options.nodeId });
   const client = new MasterClient({ baseUrl: options.masterUrl, nodeId: options.nodeId, token: options.token });
+  const atlasClient = new AtlasClient({
+    baseUrl: options.atlasUrl,
+    apiKey: options.atlasApiKey,
+    enabled: options.atlasSyncEnabled,
+  });
 
   if (options.llamaEnabled) {
     const llamaReady = await ensureLlamaReady(options);
@@ -137,7 +152,7 @@ async function runNode(options: RunOptions) {
       await sleep(options.intervalSeconds * 1000);
       continue;
     }
-    await processSources(sources, client, options);
+    await processSources(sources, client, atlasClient, options);
     if (!options.loop) {
       break;
     }
@@ -197,11 +212,15 @@ async function resolveSources(options: RunOptions): Promise<MiningSource[]> {
 async function processSources(
   sources: MiningSource[],
   client: MasterClient,
+  atlasClient: AtlasClient,
   options: RunOptions
 ): Promise<void> {
   const slice = typeof options.maxSources === "number" ? sources.slice(0, options.maxSources) : sources;
   for (const source of slice) {
     logger.info("Scraping source", { source: source.id, url: source.baseUrl });
+    if (atlasClient.isEnabled()) {
+      await atlasClient.publishSource(source);
+    }
     const artifacts = await scrapeSource(source);
     if (!artifacts.length) {
       await maybeCooldown(options);
@@ -276,6 +295,9 @@ async function processSources(
             error: error instanceof Error ? error.message : String(error),
           });
         }
+      }
+      if (atlasClient.isEnabled()) {
+        await atlasClient.publishArtifact(artifact, { nodeId: options.nodeId, source });
       }
       await maybeCooldown(options);
     }

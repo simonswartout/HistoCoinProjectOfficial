@@ -131,6 +131,8 @@ venv.bak/
 node/node_modules/
 node/dist/
 downloads/histograph-node/node_modules/
+worker-atlas/node_modules/
+worker-atlas/.wrangler/
 
 # Spyder project settings
 .spyderproject
