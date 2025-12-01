@@ -140,7 +140,7 @@ Global source index helpers:
 - Add URLs once via `npm run dev -- add-source https://example.org/archive/123`.
 - Everyone shares the same `config/global-sources.json` (bundled in the downloadable ZIP) so random selection works across contributors.
 
-Prefer not to build locally? Download `downloads/histograph-node.zip` (served on the GitHub Pages site) and run `node cli/index.js` from the unzipped folder.
+Prefer not to build locally? Download `downloads/histograph-node.zip` (served on the GitHub Pages site) and run `node cli/index.js` from the unzipped folder; it now ships with `package.json` (ESM) plus a ready-to-edit `sources.json` and `global-sources.json`.
 
 See `node/README.md` for additional options, packaging, and roadmap items.
 

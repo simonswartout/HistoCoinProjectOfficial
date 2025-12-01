@@ -306,7 +306,7 @@
     </footer>
 
     <!-- Atlas Modal -->
-    <div id="atlasModal" class="fixed inset-0 hidden atlas-modal backdrop-blur-xl z-[60]" role="dialog"
+    <div id="atlasModal" class="fixed inset-0 hidden atlas-modal z-[60]" role="dialog"
         aria-modal="true" aria-labelledby="atlasTitle">
         <div class="w-full h-full flex flex-col">
             <div class="flex items-center justify-between px-8 py-4 border-b border-white/10 bg-black/40">
@@ -323,27 +323,71 @@
                     </button>
                 </div>
             </div>
-            <div class="flex-1 flex flex-col">
-                <div id="atlasMap" class="flex-1"></div>
-                <div class="glass p-6 border-t border-white/5">
-                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div>
-                            <p class="text-xs uppercase tracking-[0.4em] text-ember">Timeline Window</p>
-                            <p class="text-lg" id="timelineLabel">All years</p>
-                        </div>
-                        <div class="flex-1">
-                            <input id="timelineSlider" type="range" min="1200" max="2025" step="25"
-                                class="w-full accent-ember">
-                            <div class="flex justify-between text-xs text-gray-500 mt-2">
-                                <span>1200</span>
-                                <span>1500</span>
-                                <span>1800</span>
-                                <span>1950</span>
-                                <span>2025</span>
+            <div class="px-8 py-3 border-b border-white/10 bg-black/30 flex gap-2 flex-wrap">
+                <button class="atlas-tab px-4 py-2 rounded-full text-sm tracking-[0.2em] border border-white/15 text-white/70"
+                    data-view-target="atlas">Atlas</button>
+                <button class="atlas-tab px-4 py-2 rounded-full text-sm tracking-[0.2em] border border-white/15 text-white/70"
+                    data-view-target="sources">Sources</button>
+                <button class="atlas-tab px-4 py-2 rounded-full text-sm tracking-[0.2em] border border-white/15 text-white/70"
+                    data-view-target="artifacts">Artifacts</button>
+            </div>
+            <div class="flex-1 overflow-hidden">
+                <section id="atlasView" data-view="atlas" class="h-full flex flex-col">
+                    <div id="atlasMap" class="flex-1"></div>
+                    <div class="glass p-6 border-t border-white/5">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div>
+                                <p class="text-xs uppercase tracking-[0.4em] text-ember">Timeline Window</p>
+                                <p class="text-lg" id="timelineLabel">All years</p>
+                            </div>
+                            <div class="flex-1">
+                                <input id="timelineSlider" type="range" min="-5000" max="2025" step="25"
+                                    class="w-full accent-ember">
+                                <div class="flex justify-between text-xs text-gray-500 mt-2">
+                                    <span>5000&nbsp;BCE</span>
+                                    <span>2000&nbsp;BCE</span>
+                                    <span>0</span>
+                                    <span>1200&nbsp;CE</span>
+                                    <span>2025&nbsp;CE</span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </section>
+                <section id="sourcesView" data-view="sources" class="hidden h-full overflow-y-auto">
+                    <div class="p-8 space-y-6">
+                        <div>
+                            <p class="text-xs uppercase tracking-[0.4em] text-ember">Source Registry</p>
+                            <p class="text-lg text-gray-200">Immutable view of crawlers and archives referenced by the network.</p>
+                        </div>
+                        <div id="sourcesList" class="grid md:grid-cols-2 gap-4"></div>
+                    </div>
+                </section>
+                <section id="artifactsView" data-view="artifacts" class="hidden h-full overflow-y-auto">
+                    <div class="p-8 space-y-6">
+                        <div class="flex flex-col lg:flex-row lg:items-end gap-4">
+                            <div class="flex-1">
+                                <label class="text-xs uppercase tracking-[0.4em] text-ember block mb-2">Search name</label>
+                                <input id="artifactSearchInput" type="text" placeholder="e.g. Bronze, textile, expedition"
+                                    class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3">
+                            </div>
+                            <div>
+                                <label class="text-xs uppercase tracking-[0.3em] text-ember block mb-2">From</label>
+                                <input id="artifactStartYear" type="number" min="-5000" max="2025" value="-5000"
+                                    class="w-32 bg-black/40 border border-white/10 rounded-xl px-3 py-2">
+                            </div>
+                            <div>
+                                <label class="text-xs uppercase tracking-[0.3em] text-ember block mb-2">To</label>
+                                <input id="artifactEndYear" type="number" min="-5000" max="2025" value="2025"
+                                    class="w-32 bg-black/40 border border-white/10 rounded-xl px-3 py-2">
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-xs uppercase tracking-[0.4em] text-ember mb-2">Matching artifacts</p>
+                            <div id="artifactResults" class="space-y-4"></div>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
     </div>
@@ -358,21 +402,132 @@
         const timelineSlider = document.getElementById("timelineSlider");
         const timelineLabel = document.getElementById("timelineLabel");
         const timelineReset = document.getElementById("timelineReset");
+        const viewButtons = document.querySelectorAll(".atlas-tab");
+        const viewSections = document.querySelectorAll("[data-view]");
+        const sourcesList = document.getElementById("sourcesList");
+        const artifactResults = document.getElementById("artifactResults");
+        const artifactSearchInput = document.getElementById("artifactSearchInput");
+        const artifactStartYear = document.getElementById("artifactStartYear");
+        const artifactEndYear = document.getElementById("artifactEndYear");
+        const TIMELINE_MAX = Number(timelineSlider?.max ?? 2025);
         let atlasMap;
         let markers = [];
+        let activeView = "atlas";
 
-        if (timelineSlider && !timelineSlider.value) {
+        if (timelineSlider) {
             timelineSlider.value = timelineSlider.max || "2025";
         }
 
         const MOCK_ARTIFACTS = [
-            { title: "Benin Bronze Plaque", year: 1550, lat: 6.34, lng: 5.62 },
-            { title: "Andean Textile Fragment", year: 1450, lat: -13.5, lng: -72.0 },
-            { title: "Trade Beads Cache", year: 1750, lat: 51.5074, lng: -0.1278 },
-            { title: "Ming Dynasty Scroll", year: 1620, lat: 34.3416, lng: 108.9398 },
-            { title: "Arctic Expedition Journal", year: 1898, lat: 64.1466, lng: -21.9426 },
-            { title: "Civil Rights Photo Archive", year: 1964, lat: 33.749, lng: -84.388 },
+            { title: "Sumerian Trade Tablet", year: -3200, lat: 30.964, lng: 46.105, location: "Uruk", summary: "Clay ledger documenting grain shipments." },
+            { title: "Harappan Bead Workshop", year: -2100, lat: 28.6139, lng: 77.209, location: "Indus Valley", summary: "Shell bead catalog uncovered near Rakhigarhi." },
+            { title: "Benin Bronze Plaque", year: 1550, lat: 6.34, lng: 5.62, location: "Benin City", summary: "Royal court relief with Portuguese regalia." },
+            { title: "Andean Textile Fragment", year: 1450, lat: -13.5, lng: -72.0, location: "Cusco", summary: "Dyed camelid fibers woven in stepped motifs." },
+            { title: "Trade Beads Cache", year: 1750, lat: 51.5074, lng: -0.1278, location: "Thames", summary: "Recovered ballast crate with Venetian glass beads." },
+            { title: "Ming Dynasty Scroll", year: 1620, lat: 34.3416, lng: 108.9398, location: "Xi'an", summary: "Ink landscape attributed to Wen Zhenming school." },
+            { title: "Arctic Expedition Journal", year: 1898, lat: 64.1466, lng: -21.9426, location: "Reykjavík", summary: "Field diary from Guðmundsson sled survey." },
+            { title: "Civil Rights Photo Archive", year: 1964, lat: 33.749, lng: -84.388, location: "Atlanta", summary: "35mm negatives from SNCC organizers." },
         ];
+
+        const MOCK_SOURCES = [
+            { name: "Smithsonian Open Access", url: "https://www.si.edu/openaccess", region: "Global", type: "Institution", lastSync: "2025-11-08" },
+            { name: "Europeana Foundation", url: "https://www.europeana.eu", region: "Europe", type: "Consortium", lastSync: "2025-11-26" },
+            { name: "Digital Benin", url: "https://digitalbenin.org", region: "West Africa", type: "Community", lastSync: "2025-10-30" },
+            { name: "Andean Textile Archive", url: "https://andeantextiles.org", region: "South America", type: "Research Lab", lastSync: "2025-11-19" },
+            { name: "NOAA Arctic Logs", url: "https://data.noaa.gov/arctic", region: "Arctic Circle", type: "Government", lastSync: "2025-11-14" },
+            { name: "Civil Rights Digital Library", url: "https://crdl.usg.edu", region: "North America", type: "Consortium", lastSync: "2025-11-23" },
+        ];
+
+        function formatYear(year) {
+            if (year < 0) return `${Math.abs(year)} BCE`;
+            if (year === 0) return "0 CE";
+            return `${year} CE`;
+        }
+
+        function setActiveView(view) {
+            activeView = view;
+            viewSections.forEach((section) => {
+                const isMatch = section.dataset.view === view;
+                section.classList.toggle("hidden", !isMatch);
+            });
+            viewButtons.forEach((btn) => {
+                const isActive = btn.dataset.viewTarget === view;
+                btn.classList.toggle("bg-ember", isActive);
+                btn.classList.toggle("text-midnight", isActive);
+                btn.classList.toggle("border-ember/60", isActive);
+                btn.classList.toggle("text-white/70", !isActive);
+                btn.classList.toggle("border-white/15", !isActive);
+            });
+            if (view === "atlas") {
+                ensureAtlas();
+            }
+            timelineReset?.classList.toggle("opacity-40", view !== "atlas");
+            timelineReset?.classList.toggle("pointer-events-none", view !== "atlas");
+        }
+
+        function renderSourcesList() {
+            if (!sourcesList) return;
+            sourcesList.innerHTML = "";
+            MOCK_SOURCES.forEach((source) => {
+                const card = document.createElement("article");
+                card.className = "glass rounded-2xl p-5 flex flex-col gap-3";
+                card.innerHTML = `
+                    <div>
+                        <p class="text-sm text-gray-400 uppercase tracking-[0.3em]">${source.type}</p>
+                        <h4 class="text-lg font-semibold">${source.name}</h4>
+                    </div>
+                    <p class="text-sm text-gray-300 break-all">${source.url}</p>
+                    <div class="text-xs text-gray-400 flex justify-between">
+                        <span>${source.region}</span>
+                        <span>Sync ${source.lastSync}</span>
+                    </div>
+                `;
+                sourcesList.appendChild(card);
+            });
+        }
+
+        function renderArtifactResults() {
+            if (!artifactResults) return;
+            const searchTerm = artifactSearchInput?.value.trim().toLowerCase() ?? "";
+            const parseYearInput = (inputEl, fallback) => {
+                if (!inputEl) return fallback;
+                const raw = inputEl.value?.trim();
+                if (raw === undefined || raw === "") return fallback;
+                const parsed = Number(raw);
+                return Number.isNaN(parsed) ? fallback : parsed;
+            };
+            const start = parseYearInput(artifactStartYear, -5000);
+            const end = parseYearInput(artifactEndYear, TIMELINE_MAX);
+            const filtered = MOCK_ARTIFACTS.filter((artifact) => {
+                const withinRange = artifact.year >= start && artifact.year <= end;
+                const matchesTerm = !searchTerm ||
+                    artifact.title.toLowerCase().includes(searchTerm) ||
+                    artifact.summary.toLowerCase().includes(searchTerm) ||
+                    artifact.location?.toLowerCase().includes(searchTerm);
+                return withinRange && matchesTerm;
+            }).sort((a, b) => b.year - a.year);
+
+            artifactResults.innerHTML = "";
+            if (!filtered.length) {
+                artifactResults.innerHTML = `<p class="text-gray-400 text-sm">No artifacts match the current filters.</p>`;
+                return;
+            }
+            filtered.forEach((artifact) => {
+                const row = document.createElement("article");
+                row.className = "glass rounded-2xl p-5";
+                row.innerHTML = `
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div>
+                            <p class="text-sm text-gray-400 uppercase tracking-[0.3em]">${artifact.location || "Unknown locale"}</p>
+                            <h4 class="text-lg font-semibold">${artifact.title}</h4>
+                        </div>
+                        <p class="text-sm text-ember">${formatYear(artifact.year)}</p>
+                    </div>
+                    <p class="text-sm text-gray-300 mt-2">${artifact.summary}</p>
+                `;
+                artifactResults.appendChild(row);
+            });
+        }
 
         function openModal() {
             atlasModal.classList.remove("hidden");
@@ -409,12 +564,15 @@
                     fillColor: "#999",
                     weight: 1,
                     fillOpacity: 0.5,
-                }).addTo(atlasMap).bindPopup(`<strong>${artifact.title}</strong><br>${artifact.year}`)
+                }).addTo(atlasMap).bindPopup(`<strong>${artifact.title}</strong><br>${formatYear(artifact.year)}`)
             );
-            timelineLabel.textContent = cutoff >= 2025 ? "All years" : `≤ ${cutoff}`;
+            timelineLabel.textContent = cutoff >= TIMELINE_MAX ? "All years" : `≤ ${formatYear(cutoff)}`;
         }
 
-        atlasTriggers.forEach((el) => el.addEventListener("click", openModal));
+        atlasTriggers.forEach((el) => el.addEventListener("click", () => {
+            setActiveView("atlas");
+            openModal();
+        }));
         closeAtlasBtn?.addEventListener("click", closeModal);
         timelineSlider?.addEventListener("input", updateMarkers);
         timelineReset?.addEventListener("click", () => {
@@ -423,6 +581,10 @@
             }
             updateMarkers();
         });
+        viewButtons.forEach((btn) => btn.addEventListener("click", () => setActiveView(btn.dataset.viewTarget)));
+        artifactSearchInput?.addEventListener("input", renderArtifactResults);
+        artifactStartYear?.addEventListener("input", renderArtifactResults);
+        artifactEndYear?.addEventListener("input", renderArtifactResults);
         atlasModal?.addEventListener("click", (event) => {
             if (event.target === atlasModal) {
                 closeModal();
@@ -433,6 +595,10 @@
                 closeModal();
             }
         });
+
+        renderSourcesList();
+        renderArtifactResults();
+        setActiveView("atlas");
     </script>
 </body>
 

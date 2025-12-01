@@ -6,6 +6,8 @@ Contents
 - cli/ : Compiled JavaScript bundle (TypeScript source lives in /node).
 - sources.sample.json : Example CC0-friendly source list to get you started.
 - global-sources.json : Shared registry for quick `--random-global` runs.
+- sources.json : Editable copy ready for your URLs (pre-copied from sample).
+- package.json : Declares `type: module` so Node runs the CLI without warnings.
 
 Requirements
 ------------
@@ -15,7 +17,7 @@ Requirements
 Quick Start
 -----------
 1. Extract this folder somewhere safe (e.g. ~/histograph-node).
-2. Copy the sample sources file so you can edit it:
+2. (Optional) Refresh the editable sources list:
    cp sources.sample.json sources.json
 3. (Optional) Add URLs to the shared registry:
    node cli/index.js add-source https://example.org/archive/123 --name "Example Archive"

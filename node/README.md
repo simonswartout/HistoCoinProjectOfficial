@@ -73,7 +73,7 @@ Key flags:
 
 ## Packaged Download
 
-A prebuilt archive lives at `downloads/histograph-node.zip` in the repo root (and is served via GitHub Pages). It contains the compiled `cli/` bundle, `sources.sample.json`, and a lightweight README so users can unzip and run the miner with nothing but Node 18+.
+A prebuilt archive lives at `downloads/histograph-node.zip` in the repo root (and is served via GitHub Pages). It contains the compiled `cli/` bundle, `sources.sample.json`, `sources.json`, `global-sources.json`, a lightweight README, and a minimal `package.json` (so Node treats the bundle as ESM) — unzip and run the miner with nothing but Node 18+.
 
 To refresh the downloadable archive after you change the CLI code:
 

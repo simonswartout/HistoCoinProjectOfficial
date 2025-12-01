@@ -1,0 +1,18 @@
+{
+  "sources": [
+    {
+      "id": "met-demo",
+      "name": "Met Museum: Bronze Dagger",
+      "baseUrl": "https://www.metmuseum.org/art/collection/search/324852",
+      "type": "generic",
+      "notes": "Known CC0 item from The Met's open-access program"
+    },
+    {
+      "id": "smithsonian-demo",
+      "name": "Smithsonian Public Domain",
+      "baseUrl": "https://www.si.edu/object/ark:/65665/nm8ca5dc26be25635ffe6b5c99b243e88ad",
+      "type": "generic",
+      "notes": "Example of a Smithsonian CC0 artifact"
+    }
+  ]
+}
