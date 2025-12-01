@@ -158,9 +158,9 @@ Global source index helpers:
 - Everyone shares the same `config/global-sources.json` (bundled in the downloadable ZIP) so random selection works across contributors.
 - Each time the crawler discovers a new artifact URL it automatically appends it to the registry (unless disabled), so future nodes can grab it via `--random-global` without manual curation.
 
-Prefer not to build locally? Download `downloads/histograph-node.zip` (served on the GitHub Pages site) and run `node cli/index.js` from the unzipped folder; it now ships with `package.json` (ESM) plus a ready-to-edit `sources.json` and `global-sources.json`.
+Prefer not to build locally? Download `downloads/histograph-node.zip` (served on the GitHub Pages site) and run `node cli/index.js` from the unzipped folder; it now ships with the compiled CLI, production `node_modules` (cheerio/commander/zod already installed), and the `setup-llama.sh` helper so you can trigger `ollama pull llama3` with one command.
 
-See `node/README.md` for additional options, packaging, and roadmap items.
+See `node/README.md` for additional options, packaging, and roadmap items. When you do need to rebuild the downloadable archive locally, run `./scripts/build_download.sh` to compile the CLI, sync configs, and regenerate `downloads/histograph-node.zip` automatically.
 
 ---
 

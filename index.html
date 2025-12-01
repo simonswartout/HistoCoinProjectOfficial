@@ -406,7 +406,9 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-o9N1j7kGStNvnt+I1b0u0sQ2QpQbATfF4vJf8gEsG6k=" crossorigin=""></script>
     <script>
-        lucide.createIcons();
+        if (window.lucide?.createIcons) {
+            window.lucide.createIcons();
+        }
         const atlasModal = document.getElementById("atlasModal");
         const atlasTriggers = document.querySelectorAll("[data-open-atlas]");
         const closeAtlasBtn = document.getElementById("closeAtlasBtn");
@@ -549,6 +551,10 @@
         }
 
         function ensureAtlas() {
+            if (typeof L === "undefined") {
+                console.warn("Leaflet failed to load; cannot render atlas map.");
+                return;
+            }
             if (atlasMap) {
                 atlasMap.invalidateSize();
                 return;
@@ -561,7 +567,7 @@
         }
 
         function updateMarkers() {
-            if (!atlasMap) return;
+            if (!atlasMap || typeof L === "undefined") return;
             const cutoff = Number(timelineSlider?.value ?? 2025);
             const filtered = MOCK_ARTIFACTS.filter((item) => item.year <= cutoff);
             markers.forEach((m) => m.remove());

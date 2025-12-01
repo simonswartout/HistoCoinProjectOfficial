@@ -130,6 +130,7 @@ venv.bak/
 # Node workspace
 node/node_modules/
 node/dist/
+downloads/histograph-node/node_modules/
 
 # Spyder project settings
 .spyderproject

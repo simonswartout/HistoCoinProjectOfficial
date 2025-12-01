@@ -119,6 +119,11 @@ async function runNode(options: RunOptions) {
   logger.info("Node starting", { masterUrl: options.masterUrl, nodeId: options.nodeId });
   const client = new MasterClient({ baseUrl: options.masterUrl, nodeId: options.nodeId, token: options.token });
 
+  if (options.llamaEnabled) {
+    const llamaReady = await ensureLlamaReady(options);
+    options.llamaEnabled = llamaReady;
+  }
+
   let keepRunning = true;
   process.on("SIGINT", () => {
     logger.warn("Received SIGINT, shutting down after current iteration");
@@ -274,6 +279,41 @@ async function processSources(
       }
       await maybeCooldown(options);
     }
+  }
+}
+
+async function ensureLlamaReady(options: RunOptions): Promise<boolean> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(options.llamaEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: options.llamaModel,
+        prompt: "Respond with OK",
+        stream: false,
+        options: { num_predict: 1 },
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`llama endpoint returned ${response.status}`);
+    }
+    logger.info("Llama endpoint verified", {
+      endpoint: options.llamaEndpoint,
+      model: options.llamaModel,
+    });
+    return true;
+  } catch (error) {
+    logger.warn("Llama endpoint unavailable; disabling validation", {
+      endpoint: options.llamaEndpoint,
+      model: options.llamaModel,
+      reason: error instanceof Error ? error.message : String(error),
+    });
+    return false;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

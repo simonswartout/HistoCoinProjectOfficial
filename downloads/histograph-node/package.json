@@ -1,3 +1,15 @@
 {
-  "type": "module"
+  "name": "histograph-node-runtime",
+  "version": "0.1.0",
+  "description": "Prebuilt HistoGraph node CLI bundle",
+  "type": "module",
+  "scripts": {
+    "start": "node cli/index.js run --sources sources.json",
+    "setup:llama": "./setup-llama.sh"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "commander": "^11.0.0",
+    "zod": "^3.22.4"
+  }
 }
