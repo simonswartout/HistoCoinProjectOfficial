@@ -3,6 +3,22 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { z } from "zod";
 import { logger } from "./logger.js";
+const CollectionSchema = z
+    .object({
+    listingUrls: z.array(z.string().url()).optional(),
+    searchUrlTemplate: z.string().url().optional(),
+    searchTerms: z.array(z.string().min(1)).optional(),
+    resultItemSelector: z.string().min(1),
+    linkAttribute: z.string().optional(),
+    maxItems: z.number().int().positive().optional(),
+})
+    .refine((value) => {
+    const hasListings = Array.isArray(value.listingUrls) && value.listingUrls.length > 0;
+    const hasSearchTemplate = Boolean(value.searchUrlTemplate && value.searchTerms?.length);
+    return hasListings || hasSearchTemplate;
+}, {
+    message: "collection must define listingUrls or a searchUrlTemplate with searchTerms",
+});
 const SourceSchema = z.object({
     id: z.string().min(1),
     name: z.string().min(1),
@@ -10,6 +26,7 @@ const SourceSchema = z.object({
     type: z.enum(["generic", "met_api"]).optional().default("generic"),
     notes: z.string().optional(),
     priority: z.number().optional(),
+    collection: CollectionSchema.optional(),
 });
 const ConfigSchema = z.object({
     sources: z.array(SourceSchema).min(1),

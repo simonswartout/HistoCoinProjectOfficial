@@ -4,7 +4,7 @@ HistoGraphPublic Node CLI
 Contents
 --------
 - cli/ : Compiled JavaScript bundle (TypeScript source lives in /node).
-- sources.sample.json : Example CC0-friendly source list to get you started.
+- sources.sample.json : Example CC0-friendly source list (shows collection traversal fields).
 - global-sources.json : Shared registry for quick `--random-global` runs.
 - sources.json : Editable copy ready for your URLs (pre-copied from sample).
 - package.json : Declares `type: module` so Node runs the CLI without warnings.
@@ -23,6 +23,15 @@ Quick Start
    node cli/index.js add-source https://example.org/archive/123 --name "Example Archive"
 4. Run the CLI:
    node cli/index.js run --sources sources.json --loop
+
+Collection Fields
+-----------------
+Each entry inside sources.json can describe listing/search traversal:
+- `listingUrls`: Array of list pages to scan.
+- `searchUrlTemplate` + `searchTerms`: Build listing URLs with `{query}` substitution.
+- `resultItemSelector`: CSS selector pointing at the `<a>` elements to follow.
+- `linkAttribute`: Attribute containing the URL (defaults to `href`).
+- `maxItems`: Cap the number of detail pages per pass (default 8).
 
 Common Flags
 ------------

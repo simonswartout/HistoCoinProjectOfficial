@@ -116,11 +116,26 @@ The `node/` workspace provides a standalone CLI for community miners that prefer
    ```bash
    cp config/sources.sample.json config/sources.json
    ```
-3. Run the miner once:
+3. Describe collections, not single URLs, when archives expose search/listing pages:
+   ```json
+   {
+     "id": "nmaa-search",
+     "name": "Smithsonian NMAA",
+     "baseUrl": "https://asia.si.edu",
+     "collection": {
+       "searchUrlTemplate": "https://asia.si.edu/explore-art-culture/collections/search/?keyword={query}",
+       "searchTerms": ["bronze", "silk"],
+       "resultItemSelector": ".search-results-image-grid__result a.secondary-link",
+       "maxItems": 9
+     }
+   }
+   ```
+   The node walks each listing, follows every matching link (up to `maxItems`), and hydrates the detail pages before running CC0 heuristics.
+4. Run the miner once:
    ```bash
    npm run dev -- run --sources config/sources.json
    ```
-4. Run continuously with your master URL and node id:
+5. Run continuously with your master URL and node id:
    ```bash
    MASTER_URL=https://your-master.example.com \
    NODE_ID=$(uuidgen) \

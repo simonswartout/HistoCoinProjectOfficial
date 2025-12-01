@@ -151,35 +151,38 @@ async function processSources(sources, client, options) {
     const slice = typeof options.maxSources === "number" ? sources.slice(0, options.maxSources) : sources;
     for (const source of slice) {
         logger.info("Scraping source", { source: source.id, url: source.baseUrl });
-        const artifact = await scrapeSource(source);
-        if (!artifact) {
+        const artifacts = await scrapeSource(source);
+        if (!artifacts.length) {
             await maybeCooldown(options);
             continue;
         }
-        if (!artifact.cc0.isLikelyCc0) {
-            logger.info("Skipping non-CC0 candidate", {
-                source: source.id,
-                confidence: artifact.cc0.confidence,
-                evidence: artifact.cc0.evidence,
-            });
-            await maybeCooldown(options);
-            continue;
-        }
-        if (options.dryRun) {
-            logger.info("Dry run payload", { artifact });
-        }
-        else {
-            try {
-                await client.submit(artifact);
-            }
-            catch (error) {
-                logger.error("Failed to submit artifact", {
+        for (const artifact of artifacts) {
+            if (!artifact.cc0.isLikelyCc0) {
+                logger.info("Skipping non-CC0 candidate", {
                     source: source.id,
-                    error: error instanceof Error ? error.message : String(error),
+                    confidence: artifact.cc0.confidence,
+                    evidence: artifact.cc0.evidence,
+                    url: artifact.url,
                 });
+                continue;
             }
+            if (options.dryRun) {
+                logger.info("Dry run payload", { artifact });
+            }
+            else {
+                try {
+                    await client.submit(artifact);
+                }
+                catch (error) {
+                    logger.error("Failed to submit artifact", {
+                        source: source.id,
+                        artifactUrl: artifact.url,
+                        error: error instanceof Error ? error.message : String(error),
+                    });
+                }
+            }
+            await maybeCooldown(options);
         }
-        await maybeCooldown(options);
     }
 }
 async function maybeCooldown(options) {

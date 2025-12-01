@@ -4,11 +4,93 @@ import { logger } from "./logger.js";
 const DEFAULT_TIMEOUT = 20000;
 const DEFAULT_USER_AGENT = "HistoCoinNode/0.1 (+https://github.com/simonswartout/HistoCoinProjectOfficial)";
 export async function scrapeSource(source, options = {}) {
+    if (source.collection) {
+        return scrapeCollectionSource(source, options);
+    }
+    const html = await fetchHtml(source.baseUrl, options, source.id);
+    if (!html) {
+        return [];
+    }
+    const artifact = parseHtml(source, source.baseUrl, html);
+    return artifact ? [artifact] : [];
+}
+async function scrapeCollectionSource(source, options) {
+    const traversal = source.collection;
+    const listingUrls = buildListingUrls(traversal, source.baseUrl);
+    if (!listingUrls.length) {
+        logger.warn("Collection source missing listing URLs", { source: source.id });
+        return [];
+    }
+    const detailLinks = [];
+    for (const listingUrl of listingUrls) {
+        const html = await fetchHtml(listingUrl, options, source.id);
+        if (!html) {
+            continue;
+        }
+        const $ = load(html);
+        const selector = traversal.resultItemSelector;
+        const attribute = traversal.linkAttribute || "href";
+        $(selector).each((index, element) => {
+            if (detailLinks.length >= (traversal.maxItems ?? 8)) {
+                return false;
+            }
+            const raw = $(element).attr(attribute);
+            if (!raw) {
+                return;
+            }
+            try {
+                const absolute = resolveUrl(listingUrl, raw);
+                if (!detailLinks.some((entry) => entry.url === absolute)) {
+                    detailLinks.push({ url: absolute, listing: listingUrl });
+                }
+            }
+            catch {
+                /* ignore bad urls */
+            }
+        });
+        if (detailLinks.length >= (traversal.maxItems ?? 8)) {
+            break;
+        }
+    }
+    if (!detailLinks.length) {
+        logger.warn("Collection listing produced no detail URLs", { source: source.id });
+        return [];
+    }
+    const artifacts = [];
+    for (const link of detailLinks) {
+        const html = await fetchHtml(link.url, options, source.id);
+        if (!html) {
+            continue;
+        }
+        const artifact = parseHtml(source, link.url, html, { listingUrl: link.listing });
+        if (artifact) {
+            artifacts.push(artifact);
+        }
+    }
+    return artifacts;
+}
+function buildListingUrls(traversal, fallbackBase) {
+    const urls = [];
+    if (Array.isArray(traversal.listingUrls)) {
+        urls.push(...traversal.listingUrls);
+    }
+    if (traversal.searchUrlTemplate && traversal.searchTerms?.length) {
+        for (const term of traversal.searchTerms) {
+            const encoded = encodeURIComponent(term.trim());
+            urls.push(traversal.searchUrlTemplate.replace("{query}", encoded));
+        }
+    }
+    if (!urls.length) {
+        urls.push(fallbackBase);
+    }
+    return urls;
+}
+async function fetchHtml(url, options, sourceId) {
     const timeout = options.timeoutMs ?? DEFAULT_TIMEOUT;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
     try {
-        const response = await fetch(source.baseUrl, {
+        const response = await fetch(url, {
             headers: {
                 "User-Agent": options.userAgent ?? DEFAULT_USER_AGENT,
                 Accept: "text/html,application/xhtml+xml",
@@ -16,15 +98,15 @@ export async function scrapeSource(source, options = {}) {
             signal: controller.signal,
         });
         if (!response.ok) {
-            logger.warn("Source fetch failed", { source: source.id, status: response.status });
+            logger.warn("Source fetch failed", { source: sourceId, status: response.status, url });
             return null;
         }
-        const html = await response.text();
-        return parseHtml(source, html);
+        return await response.text();
     }
     catch (error) {
         logger.error("Source fetch error", {
-            source: source.id,
+            source: sourceId,
+            url,
             error: error instanceof Error ? error.message : String(error),
         });
         return null;
@@ -33,7 +115,7 @@ export async function scrapeSource(source, options = {}) {
         clearTimeout(timer);
     }
 }
-function parseHtml(source, html) {
+function parseHtml(source, targetUrl, html, extraMetadata = {}) {
     const $ = load(html);
     $("script, style, noscript, nav, footer").remove();
     const title = ($("title").first().text() || source.name).trim();
@@ -45,18 +127,19 @@ function parseHtml(source, html) {
     const imageCandidate = $('meta[property="og:image"]').attr("content") ||
         $("img").first().attr("src") ||
         undefined;
-    const image = imageCandidate ? resolveUrl(source.baseUrl, imageCandidate) : undefined;
+    const image = imageCandidate ? resolveUrl(targetUrl, imageCandidate) : undefined;
     const metadata = {
         titleCandidates: [title, ogTitle].filter(Boolean),
         descriptionCandidates: [descriptionMeta, ogDesc].filter(Boolean),
         sourceNotes: source.notes,
+        ...extraMetadata,
     };
     const cc0 = assessCc0(`${snippet} ${descriptionMeta} ${ogDesc}`);
     const summary = ogDesc || descriptionMeta || snippet.slice(0, 360);
     return {
         sourceId: source.id,
         sourceName: source.name,
-        url: source.baseUrl,
+        url: targetUrl,
         title: title || ogTitle || source.name,
         summary,
         imageUrl: image,

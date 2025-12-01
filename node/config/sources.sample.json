@@ -1,18 +1,34 @@
 {
   "sources": [
     {
-      "id": "met-demo",
-      "name": "Met Museum: Bronze Dagger",
-      "baseUrl": "https://www.metmuseum.org/art/collection/search/324852",
+      "id": "nmaa-search",
+      "name": "Smithsonian National Museum of Asian Art",
+      "baseUrl": "https://asia.si.edu",
       "type": "generic",
-      "notes": "Known CC0 item from The Met's open-access program"
+      "notes": "Traverses the public collections search to harvest CC0 artifacts",
+      "collection": {
+        "searchUrlTemplate": "https://asia.si.edu/explore-art-culture/collections/search/?keyword={query}",
+        "searchTerms": ["bronze", "silk", "manuscript"],
+        "resultItemSelector": ".search-results-image-grid__result a.secondary-link",
+        "linkAttribute": "href",
+        "maxItems": 9
+      }
     },
     {
-      "id": "smithsonian-demo",
-      "name": "Smithsonian Public Domain",
-      "baseUrl": "https://www.si.edu/object/ark:/65665/nm8ca5dc26be25635ffe6b5c99b243e88ad",
+      "id": "europeana-open",
+      "name": "Europeana CC0 Photography",
+      "baseUrl": "https://www.europeana.eu",
       "type": "generic",
-      "notes": "Example of a Smithsonian CC0 artifact"
+      "notes": "Ingests CC0 photos surfaced through the Europeana search UI",
+      "collection": {
+        "listingUrls": [
+          "https://www.europeana.eu/en/search?page=1&query=photograph&rights=cc0",
+          "https://www.europeana.eu/en/search?page=2&query=photograph&rights=cc0"
+        ],
+        "resultItemSelector": "a[data-qa='item-title-link']",
+        "linkAttribute": "href",
+        "maxItems": 8
+      }
     }
   ]
 }

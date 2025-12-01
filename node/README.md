@@ -5,6 +5,7 @@ This package provides a headless, resource-aware CLI that lets any contributor r
 ## Features
 - Declarative source configuration (`config/sources.sample.json`).
 - Pluggable scraping strategies (generic HTML today, extensible for APIs like the Met).
+- Collection traversal that walks listing/search pages and hydrates each artifact detail view.
 - Lightweight CC0 heuristics (keyword + metadata scanning) before sending artifacts.
 - Structured payloads with provenance metadata so the master can append validator-friendly bubbles.
 - Continuous mode with per-loop cooldowns to avoid hammering sources.
@@ -25,16 +26,30 @@ Copy the sample file and edit it with URLs you are allowed to scrape:
 ```bash
 cp config/sources.sample.json config/sources.json
 ```
-Each source entry supports:
+Each source entry can either be a single URL or describe a **collection traversal**:
 ```json
 {
-  "id": "met-demo",
-  "name": "Met Museum Sample",
-  "baseUrl": "https://www.metmuseum.org/art/collection/search/436535",
+  "id": "nmaa-search",
+  "name": "Smithsonian NMAA",
+  "baseUrl": "https://asia.si.edu",
   "type": "generic",
-  "notes": "Known CC0 object"
+  "notes": "Harvests CC0 artifacts from the public search portal",
+  "collection": {
+    "searchUrlTemplate": "https://asia.si.edu/explore-art-culture/collections/search/?keyword={query}",
+    "searchTerms": ["bronze", "silk", "manuscript"],
+    "resultItemSelector": ".search-results-image-grid__result a.secondary-link",
+    "linkAttribute": "href",
+    "maxItems": 9
+  }
 }
 ```
+
+Collection fields:
+- `listingUrls`: Array of pre-built listing pages to scan.
+- `searchUrlTemplate`: URL containing `{query}` placeholder plus a `searchTerms` list for templated listings.
+- `resultItemSelector`: CSS selector that points at `<a>` tags to follow (required).
+- `linkAttribute`: Attribute that holds the href (defaults to `href`).
+- `maxItems`: Caps detail pages per source per loop (defaults to `8`).
 
 ## Global Source Index
 

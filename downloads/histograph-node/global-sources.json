@@ -1,3 +1,18 @@
 {
-  "sources": []
+  "sources": [
+    {
+      "id": "nmaa-search-demo",
+      "name": "Smithsonian Asian Art Search",
+      "baseUrl": "https://asia.si.edu",
+      "type": "generic",
+      "notes": "Seeded source that walks the National Museum of Asian Art search listings",
+      "collection": {
+        "searchUrlTemplate": "https://asia.si.edu/explore-art-culture/collections/search/?keyword={query}",
+        "searchTerms": ["bronze", "painting"],
+        "resultItemSelector": ".search-results-image-grid__result a.secondary-link",
+        "linkAttribute": "href",
+        "maxItems": 6
+      }
+    }
+  ]
 }

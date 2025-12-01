@@ -1,5 +1,14 @@
 export type SourceKind = "generic" | "met_api";
 
+export interface CollectionTraversal {
+  listingUrls?: string[];
+  searchUrlTemplate?: string;
+  searchTerms?: string[];
+  resultItemSelector: string;
+  linkAttribute?: string;
+  maxItems?: number;
+}
+
 export interface MiningSource {
   id: string;
   name: string;
@@ -7,6 +16,7 @@ export interface MiningSource {
   type?: SourceKind;
   notes?: string;
   priority?: number;
+  collection?: CollectionTraversal;
 }
 
 export interface Cc0Verdict {
