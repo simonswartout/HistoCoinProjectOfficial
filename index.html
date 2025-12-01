@@ -11,6 +11,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Space+Grotesk:wght@400;500;600&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4QF2xLClL3DGb5mQw8JE0bNwV1t6vKpYhV+3rJTsw0=" crossorigin="" />
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         tailwind.config = {
@@ -47,6 +49,17 @@
                 linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
             background-size: 80px 80px;
         }
+        .atlas-modal {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        #atlasMap {
+            min-height: 60vh;
+        }
+
+        .timeline-track {
+            background: rgba(255, 255, 255, 0.08);
+        }
     </style>
 </head>
 
@@ -60,11 +73,17 @@
                     <p class="font-serif text-xl tracking-[0.3em] -mt-2">GRAPH</p>
                 </div>
             </div>
-            <nav class="hidden md:flex gap-8 text-sm uppercase tracking-widest text-gray-300">
+            <nav class="hidden md:flex gap-8 text-sm uppercase tracking-widest text-gray-300 items-center">
                 <a href="#mission" class="hover:text-ember">Mission</a>
                 <a href="#pillars" class="hover:text-ember">Pillars</a>
                 <a href="#timeline" class="hover:text-ember">Roadmap</a>
                 <a href="#participate" class="hover:text-ember">Participate</a>
+                <button data-open-atlas
+                    class="inline-flex items-center gap-2 border border-white/20 px-4 py-2 rounded-full text-xs tracking-[0.3em] text-gray-100 hover:border-ember"
+                    aria-haspopup="dialog">
+                    ATLAS
+                    <i data-lucide="globe" class="h-4 w-4"></i>
+                </button>
             </nav>
             <a href="#participate"
                 class="hidden sm:inline-flex items-center gap-2 border border-ember/60 px-4 py-2 rounded-full text-sm font-semibold text-ember">
@@ -97,6 +116,11 @@
                     Run a Node
                     <i data-lucide="cpu" class="h-5 w-5"></i>
                 </a>
+                <button data-open-atlas
+                    class="inline-flex items-center gap-2 text-gray-200 border border-white/20 px-6 py-3 rounded-full hover:border-ember">
+                    View Atlas
+                    <i data-lucide="globe" class="h-5 w-5"></i>
+                </button>
             </div>
         </div>
     </section>
@@ -281,8 +305,134 @@
         <p>HistoGraphPublic · stewarded by Luminary Labs · 2025</p>
     </footer>
 
+    <!-- Atlas Modal -->
+    <div id="atlasModal" class="fixed inset-0 hidden atlas-modal backdrop-blur-xl z-[60]" role="dialog"
+        aria-modal="true" aria-labelledby="atlasTitle">
+        <div class="w-full h-full flex flex-col">
+            <div class="flex items-center justify-between px-8 py-4 border-b border-white/10 bg-black/40">
+                <div>
+                    <p class="text-ember uppercase tracking-[0.3em] text-xs">Global Atlas</p>
+                    <h2 id="atlasTitle" class="font-serif text-2xl">Artifacts Map & Timeline</h2>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="timelineReset" class="text-sm text-gray-300 hover:text-white">Reset timeline</button>
+                    <button id="closeAtlasBtn"
+                        class="rounded-full border border-white/20 p-3 text-gray-200 hover:text-white"
+                        aria-label="Close atlas">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="flex-1 flex flex-col">
+                <div id="atlasMap" class="flex-1"></div>
+                <div class="glass p-6 border-t border-white/5">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                            <p class="text-xs uppercase tracking-[0.4em] text-ember">Timeline Window</p>
+                            <p class="text-lg" id="timelineLabel">All years</p>
+                        </div>
+                        <div class="flex-1">
+                            <input id="timelineSlider" type="range" min="1200" max="2025" step="25"
+                                class="w-full accent-ember">
+                            <div class="flex justify-between text-xs text-gray-500 mt-2">
+                                <span>1200</span>
+                                <span>1500</span>
+                                <span>1800</span>
+                                <span>1950</span>
+                                <span>2025</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-o9N1j7kGStNvnt+I1b0u0sQ2QpQbATfF4vJf8gEsG6k=" crossorigin=""></script>
     <script>
         lucide.createIcons();
+        const atlasModal = document.getElementById("atlasModal");
+        const atlasTriggers = document.querySelectorAll("[data-open-atlas]");
+        const closeAtlasBtn = document.getElementById("closeAtlasBtn");
+        const timelineSlider = document.getElementById("timelineSlider");
+        const timelineLabel = document.getElementById("timelineLabel");
+        const timelineReset = document.getElementById("timelineReset");
+        let atlasMap;
+        let markers = [];
+
+        if (timelineSlider && !timelineSlider.value) {
+            timelineSlider.value = timelineSlider.max || "2025";
+        }
+
+        const MOCK_ARTIFACTS = [
+            { title: "Benin Bronze Plaque", year: 1550, lat: 6.34, lng: 5.62 },
+            { title: "Andean Textile Fragment", year: 1450, lat: -13.5, lng: -72.0 },
+            { title: "Trade Beads Cache", year: 1750, lat: 51.5074, lng: -0.1278 },
+            { title: "Ming Dynasty Scroll", year: 1620, lat: 34.3416, lng: 108.9398 },
+            { title: "Arctic Expedition Journal", year: 1898, lat: 64.1466, lng: -21.9426 },
+            { title: "Civil Rights Photo Archive", year: 1964, lat: 33.749, lng: -84.388 },
+        ];
+
+        function openModal() {
+            atlasModal.classList.remove("hidden");
+            document.body.classList.add("overflow-hidden");
+            ensureAtlas();
+        }
+
+        function closeModal() {
+            atlasModal.classList.add("hidden");
+            document.body.classList.remove("overflow-hidden");
+        }
+
+        function ensureAtlas() {
+            if (atlasMap) {
+                atlasMap.invalidateSize();
+                return;
+            }
+            atlasMap = L.map("atlasMap", { worldCopyJump: true }).setView([20, 0], 2);
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: "&copy; OpenStreetMap",
+            }).addTo(atlasMap);
+            updateMarkers();
+        }
+
+        function updateMarkers() {
+            if (!atlasMap) return;
+            const cutoff = Number(timelineSlider?.value ?? 2025);
+            const filtered = MOCK_ARTIFACTS.filter((item) => item.year <= cutoff);
+            markers.forEach((m) => m.remove());
+            markers = filtered.map((artifact) =>
+                L.circleMarker([artifact.lat, artifact.lng], {
+                    radius: 8,
+                    color: "#999",
+                    fillColor: "#999",
+                    weight: 1,
+                    fillOpacity: 0.5,
+                }).addTo(atlasMap).bindPopup(`<strong>${artifact.title}</strong><br>${artifact.year}`)
+            );
+            timelineLabel.textContent = cutoff >= 2025 ? "All years" : `≤ ${cutoff}`;
+        }
+
+        atlasTriggers.forEach((el) => el.addEventListener("click", openModal));
+        closeAtlasBtn?.addEventListener("click", closeModal);
+        timelineSlider?.addEventListener("input", updateMarkers);
+        timelineReset?.addEventListener("click", () => {
+            if (timelineSlider) {
+                timelineSlider.value = timelineSlider.max || "2025";
+            }
+            updateMarkers();
+        });
+        atlasModal?.addEventListener("click", (event) => {
+            if (event.target === atlasModal) {
+                closeModal();
+            }
+        });
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && !atlasModal.classList.contains("hidden")) {
+                closeModal();
+            }
+        });
     </script>
 </body>
 

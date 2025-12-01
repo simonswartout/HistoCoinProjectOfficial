@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import process from "node:process";
 import { randomUUID } from "node:crypto";
 import { Command } from "commander";
 import { loadConfigFromFile, loadSourcesFromMaster } from "./config.js";
@@ -7,6 +8,7 @@ import { scrapeSource } from "./scraper.js";
 import { logger } from "./logger.js";
 import { sleep } from "./utils.js";
 import type { MiningSource } from "./types.js";
+import { addSourceToIndex, loadSourcesFromIndex } from "./sourceIndex.js";
 
 interface RunOptions {
   masterUrl: string;
@@ -19,10 +21,15 @@ interface RunOptions {
   cooldownSeconds: number;
   dryRun?: boolean;
   maxSources?: number;
+  globalIndexPath: string;
+  randomFromGlobal?: boolean;
+  targetUrl?: string;
+  targetName?: string;
 }
 
 const DEFAULT_INTERVAL = 30;
 const DEFAULT_COOLDOWN = 5;
+const DEFAULT_GLOBAL_INDEX = "config/global-sources.json";
 
 async function main() {
   const program = new Command();
@@ -40,7 +47,11 @@ async function main() {
     .option("--cooldown <seconds>", "Seconds to wait between sources", `${DEFAULT_COOLDOWN}`)
     .option("--dry-run", "Print payloads without POSTing", false)
     .option("--max-sources <number>", "Limit number of sources per loop", undefined)
-    .action(async (rawOpts) => {
+    .option("--global-index <path>", "Path to the shared global source index", DEFAULT_GLOBAL_INDEX)
+    .option("--random-global", "Pick a random source from the global index", false)
+    .option("--target-url <url>", "Scrape a single URL; auto-adds it to the global index")
+    .option("--target-name <name>", "Friendly name for --target-url (optional)")
+    .action(async (rawOpts: any) => {
       const runOpts: RunOptions = {
         masterUrl: rawOpts.masterUrl,
         nodeId: rawOpts.nodeId ?? randomUUID(),
@@ -52,9 +63,40 @@ async function main() {
         cooldownSeconds: Number(rawOpts.cooldown ?? DEFAULT_COOLDOWN),
         dryRun: Boolean(rawOpts.dryRun),
         maxSources: rawOpts.maxSources ? Number(rawOpts.maxSources) : undefined,
+        globalIndexPath: rawOpts.globalIndex ?? DEFAULT_GLOBAL_INDEX,
+        randomFromGlobal: Boolean(rawOpts.randomGlobal),
+        targetUrl: rawOpts.targetUrl,
+        targetName: rawOpts.targetName,
       };
 
       await runNode(runOpts);
+    });
+
+  program
+    .command("add-source")
+    .argument("<url>", "URL to add to the global index")
+    .option("--name <name>", "Friendly name", undefined)
+    .option("--type <type>", "Source type (generic, met_api, etc.)", "generic")
+    .option("--notes <text>", "Optional notes about the source")
+    .option("--index <path>", "Path to the global index JSON", DEFAULT_GLOBAL_INDEX)
+    .action(async (url: string, opts: any) => {
+      try {
+        const result = await addSourceToIndex({
+          indexPath: opts.index ?? DEFAULT_GLOBAL_INDEX,
+          url,
+          name: opts.name,
+          type: opts.type,
+          notes: opts.notes,
+        });
+        if (result.added) {
+          logger.info("Source added to global index", { id: result.source.id, url: result.source.baseUrl });
+        } else {
+          logger.info("Source already existed", { id: result.source.id, url: result.source.baseUrl });
+        }
+      } catch (error) {
+        logger.error("Failed to add source", { error: error instanceof Error ? error.message : String(error) });
+        process.exitCode = 1;
+      }
     });
 
   await program.parseAsync(process.argv);
@@ -92,6 +134,29 @@ async function runNode(options: RunOptions) {
 }
 
 async function resolveSources(options: RunOptions): Promise<MiningSource[]> {
+  if (options.targetUrl) {
+    const result = await addSourceToIndex({
+      indexPath: options.globalIndexPath,
+      url: options.targetUrl,
+      name: options.targetName,
+    });
+    logger.info("Target URL ready", { url: options.targetUrl, added: result.added });
+    return [result.source];
+  }
+
+  if (options.randomFromGlobal) {
+    const globalSources = await loadSourcesFromIndex(options.globalIndexPath);
+    if (!globalSources.length) {
+      logger.warn("Global index is empty; add sources before using --random-global", {
+        index: options.globalIndexPath,
+      });
+      return [];
+    }
+    const picked = globalSources[Math.floor(Math.random() * globalSources.length)];
+    logger.info("Random global source selected", { id: picked.id, url: picked.baseUrl });
+    return [picked];
+  }
+
   if (options.fetchRemoteSources) {
     return loadSourcesFromMaster(options.masterUrl);
   }

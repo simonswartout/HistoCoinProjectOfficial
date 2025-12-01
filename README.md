@@ -131,6 +131,14 @@ Flags worth knowing:
 - `--fetch-remote-sources` – ignore the local JSON file and pull `/sources` directly from the master.
 - `--dry-run` – print payloads instead of POSTing (great for debugging CC0 heuristics).
 - `--interval` / `--cooldown` – throttle loops or per-source scraping to avoid hammering archives.
+- `--target-url` – scrape a single URL (it is auto-added to the shared `config/global-sources.json`).
+- `--random-global` – pick a random entry from the global index when you want serendipity.
+- `--global-index <path>` – point both commands at a custom shared index file.
+
+Global source index helpers:
+
+- Add URLs once via `npm run dev -- add-source https://example.org/archive/123`.
+- Everyone shares the same `config/global-sources.json` (bundled in the downloadable ZIP) so random selection works across contributors.
 
 Prefer not to build locally? Download `downloads/histograph-node.zip` (served on the GitHub Pages site) and run `node cli/index.js` from the unzipped folder.
 

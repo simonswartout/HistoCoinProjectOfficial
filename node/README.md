@@ -36,6 +36,19 @@ Each source entry supports:
 }
 ```
 
+## Global Source Index
+
+Use `config/global-sources.json` as a shared clipboard of promising archives. Add URLs via CLI so everyone gets them automatically:
+
+```bash
+npm run dev -- add-source https://archives.si.edu/object/ark:/65665/123 \
+  --name "Smithsonian Notebook"
+```
+
+- `--index /custom/path/global.json` stores the registry elsewhere (e.g. `$HOME/.histograph`).
+- `run --target-url <url>` ensures the URL is present (adding it if necessary) and scrapes it immediately.
+- `run --random-global` picks a random entry from the registry when you want variety.
+
 ## Run the Miner
 Development mode (TypeScript + tsx):
 ```bash
@@ -54,6 +67,9 @@ Key flags:
 - `--interval 60` waits N seconds between loops (default 30).
 - `--dry-run` prints payloads instead of POSTing.
 - `--fetch-remote-sources` pulls `GET /sources` from the master instead of reading JSON.
+- `--target-url https://...` scrapes one URL and adds it to the global index.
+- `--random-global` selects a random record from the global index.
+- `--global-index /path/to/global.json` lets you relocate the registry.
 
 ## Packaged Download
 
@@ -70,6 +86,7 @@ rm -rf downloads/histograph-node/cli
 mkdir -p downloads/histograph-node/cli
 cp -r node/dist/* downloads/histograph-node/cli/
 cp node/config/sources.sample.json downloads/histograph-node/sources.sample.json
+cp node/config/global-sources.json downloads/histograph-node/global-sources.json
 cd downloads
 zip -r histograph-node.zip histograph-node
 ```
