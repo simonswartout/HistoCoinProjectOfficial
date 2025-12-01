@@ -1,0 +1,7 @@
+[
+    {
+        "name": "The Met Open Access",
+        "base_url": "https://collectionapi.metmuseum.org/public/collection/v1/objects",
+        "cc0": true
+    }
+]

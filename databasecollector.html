@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HistoCoin | Archeologist Console</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gold: { 400: '#D4AF37', 500: '#C5A028' },
+                        obsidian: '#0a0a0a',
+                        charcoal: '#1a1a1a',
+                    },
+                    fontFamily: {
+                        serif: ['Cinzel', 'serif'],
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #050505;
+            color: #e5e5e5;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .console-input {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .console-input:focus {
+            border-color: #D4AF37;
+            outline: none;
+        }
+    </style>
+</head>
+
+<body class="font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Nav -->
+    <nav class="border-b border-white/10 bg-obsidian/90 backdrop-blur">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <i data-lucide="database" class="text-gold-400"></i>
+                <span class="font-serif font-bold text-white tracking-wider">HISTOCOIN <span
+                        class="text-gold-400 text-xs align-top">BETA</span></span>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2 text-sm text-green-400">
+                    <span class="relative flex h-3 w-3">
+                        <span
+                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                    </span>
+                    System Online
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow p-6 max-w-7xl mx-auto w-full space-y-6">
+
+        <!-- Stats Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="glass-panel p-6 rounded-xl">
+                <div class="text-gray-400 text-sm uppercase tracking-wider mb-1">Total Artifacts Indexed</div>
+                <div class="text-4xl font-serif font-bold text-white" id="artifact-count">0</div>
+            </div>
+            <div class="glass-panel p-6 rounded-xl">
+                <div class="text-gray-400 text-sm uppercase tracking-wider mb-1">Crawl Status</div>
+                <div class="text-lg font-bold text-gold-400 flex items-center gap-2" id="crawl-status">
+                    <span class="w-2 h-2 rounded-full bg-gray-500"></span> Idle
+                </div>
+                <div class="text-xs text-gray-500 mt-1" id="crawl-source">Waiting for command...</div>
+            </div>
+
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Control Panel -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- Tabs -->
+                <div class="flex gap-2">
+                    <button onclick="switchTab('add')" id="tab-add"
+                        class="flex-1 bg-gold-400 text-black font-bold py-2 rounded text-sm">Add Source</button>
+                    <button onclick="switchTab('list')" id="tab-list"
+                        class="flex-1 bg-white/5 text-gray-400 hover:text-white font-bold py-2 rounded text-sm">View
+                        Sources</button>
+                </div>
+
+                <!-- Add Source Form -->
+                <div id="panel-add" class="glass-panel p-6 rounded-xl">
+                    <h2 class="font-serif text-xl text-white mb-4 flex items-center gap-2">
+                        <i data-lucide="plus-circle" class="w-5 h-5 text-gold-400"></i> Add Target
+                    </h2>
+                    <form id="add-source-form" class="space-y-4">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Source Name</label>
+                            <input type="text" id="source-name" required
+                                class="console-input w-full rounded p-2 text-sm" placeholder="e.g. British Museum API">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Base URL</label>
+                            <input type="url" id="source-url" required class="console-input w-full rounded p-2 text-sm"
+                                placeholder="https://api...">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="source-cc0" checked class="accent-gold-400">
+                            <label class="text-sm text-gray-300">CC0 / Public Domain Verified</label>
+                        </div>
+                        <button type="submit"
+                            class="w-full bg-gold-400 hover:bg-gold-500 text-black font-bold py-2 rounded transition-colors flex items-center justify-center gap-2">
+                            <i data-lucide="save" class="w-4 h-4"></i> Register Source
+                        </button>
+                    </form>
+                </div>
+
+                <!-- List Sources Panel (Hidden by default) -->
+                <div id="panel-list" class="glass-panel p-6 rounded-xl hidden">
+                    <h2 class="font-serif text-xl text-white mb-4 flex items-center gap-2">
+                        <i data-lucide="database" class="w-5 h-5 text-gold-400"></i> Active Sources
+                    </h2>
+                    <div id="sources-list" class="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+                        <!-- Sources injected here -->
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="glass-panel p-6 rounded-xl">
+                    <h2 class="font-serif text-xl text-white mb-4 flex items-center gap-2">
+                        <i data-lucide="pickaxe" class="w-5 h-5 text-gold-400"></i> Auto-Miner
+                    </h2>
+                    <div class="flex gap-2">
+                        <button id="btn-start-miner" onclick="toggleMiner(true)"
+                            class="flex-1 border border-green-500 text-green-500 hover:bg-green-500/10 font-bold py-3 rounded transition-colors flex items-center justify-center gap-2">
+                            <i data-lucide="play" class="w-4 h-4"></i> Start
+                        </button>
+                        <button id="btn-stop-miner" onclick="toggleMiner(false)"
+                            class="flex-1 border border-red-500 text-red-500 hover:bg-red-500/10 font-bold py-3 rounded transition-colors flex items-center justify-center gap-2">
+                            <i data-lucide="square" class="w-4 h-4"></i> Stop
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2 text-center">Continuous background crawling.</p>
+                </div>
+            </div>
+
+            <!-- Feed -->
+            <div class="lg:col-span-2">
+                <div class="glass-panel p-6 rounded-xl h-full min-h-[500px]">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="font-serif text-xl text-white flex items-center gap-2">
+                            <i data-lucide="list" class="w-5 h-5 text-gold-400"></i> Live Index Feed
+                        </h2>
+                        <button onclick="fetchArtifacts()"
+                            class="text-xs text-gold-400 hover:underline">Refresh</button>
+                    </div>
+
+                    <div id="artifact-feed" class="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                        <!-- Items will be injected here -->
+                        <div class="text-center text-gray-500 py-10">
+                            <i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto mb-2"></i>
+                            Connecting to HistoCoin Network...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+        const API_BASE = 'http://localhost:8000';
+
+        // Utils
+        const formatTime = (iso) => new Date(iso).toLocaleTimeString();
+
+        // Tabs
+        function switchTab(tab) {
+            if (tab === 'add') {
+                document.getElementById('panel-add').classList.remove('hidden');
+                document.getElementById('panel-list').classList.add('hidden');
+                document.getElementById('tab-add').className = 'flex-1 bg-gold-400 text-black font-bold py-2 rounded text-sm';
+                document.getElementById('tab-list').className = 'flex-1 bg-white/5 text-gray-400 hover:text-white font-bold py-2 rounded text-sm';
+            } else {
+                document.getElementById('panel-add').classList.add('hidden');
+                document.getElementById('panel-list').classList.remove('hidden');
+                document.getElementById('tab-add').className = 'flex-1 bg-white/5 text-gray-400 hover:text-white font-bold py-2 rounded text-sm';
+                document.getElementById('tab-list').className = 'flex-1 bg-gold-400 text-black font-bold py-2 rounded text-sm';
+                fetchSources();
+            }
+        }
+
+        // Fetch Status
+        async function fetchStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/status`);
+                const data = await res.json();
+
+                const statusEl = document.getElementById('crawl-status');
+                const sourceEl = document.getElementById('crawl-source');
+
+                // Update buttons state
+                const startBtn = document.getElementById('btn-start-miner');
+                const stopBtn = document.getElementById('btn-stop-miner');
+
+                if (data.auto_miner) {
+                    startBtn.classList.add('bg-green-500/20');
+                    stopBtn.classList.remove('bg-red-500/20');
+                } else {
+                    startBtn.classList.remove('bg-green-500/20');
+                    stopBtn.classList.add('bg-red-500/20');
+                }
+
+                if (data.status === 'Running' || data.status === 'Starting Auto-Miner' || data.status === 'Cooling down...') {
+                    statusEl.innerHTML = '<span class="relative flex h-3 w-3 mr-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span></span> ' + data.status;
+                    statusEl.className = 'text-lg font-bold text-green-400 flex items-center';
+                    sourceEl.innerText = `Scanning: ${data.current_source || 'Initializing...'}`;
+                } else {
+                    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-gray-500 mr-2"></span> Idle';
+                    statusEl.className = 'text-lg font-bold text-gray-400 flex items-center';
+                    sourceEl.innerText = 'Waiting for command...';
+                }
+            } catch (e) {
+                console.error("Status fetch failed", e);
+            }
+        }
+
+        // Fetch Sources
+        async function fetchSources() {
+            try {
+                const res = await fetch(`${API_BASE}/sources`);
+                const data = await res.json();
+                const list = document.getElementById('sources-list');
+                list.innerHTML = '';
+
+                data.forEach(s => {
+                    const item = document.createElement('div');
+                    item.className = 'bg-black/40 p-3 rounded border border-white/5 flex justify-between items-center';
+                    item.innerHTML = `
+                        <div>
+                            <div class="text-sm font-bold text-white">${s.name}</div>
+                            <div class="text-xs text-gray-500 truncate max-w-[150px]">${s.base_url}</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${s.cc0 ? '<i data-lucide="shield-check" class="w-4 h-4 text-green-400" title="CC0 Verified"></i>' : ''}
+                            <button onclick="crawlSource(${s.id}, '${s.name}')" class="p-1 hover:bg-gold-400/20 rounded text-gold-400" title="Crawl This Source">
+                                <i data-lucide="play-circle" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="deleteSource(${s.id})" class="p-1 hover:bg-red-500/20 rounded text-red-400" title="Remove Source">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+                lucide.createIcons();
+            } catch (e) {
+                console.error("Sources fetch failed", e);
+            }
+        }
+
+        // Fetch Artifacts
+        async function fetchArtifacts() {
+            try {
+                // Fetch count
+                try {
+                    const statsRes = await fetch(`${API_BASE}/stats`);
+                    const statsData = await statsRes.json();
+                    document.getElementById('artifact-count').innerText = statsData.artifact_count;
+                } catch (e) {
+                    console.error("Stats fetch failed", e);
+                }
+
+                const res = await fetch(`${API_BASE}/artifacts`);
+                const data = await res.json();
+
+                // document.getElementById('artifact-count').innerText = data.length; // Removed: uses stats endpoint now
+
+                const feed = document.getElementById('artifact-feed');
+                feed.innerHTML = '';
+
+                if (data.length === 0) {
+                    feed.innerHTML = '<div class="text-center text-gray-500 py-10">No artifacts indexed yet. Add a source and trigger a crawl.</div>';
+                    return;
+                }
+
+                data.reverse().forEach(art => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white/5 p-4 rounded border border-white/5 hover:border-gold-400/30 transition-colors flex gap-4';
+                    card.innerHTML = `
+                        <div class="w-16 h-16 bg-black rounded overflow-hidden flex-shrink-0">
+                            ${art.image_url ? `<img src="${art.image_url}" class="w-full h-full object-cover">` : '<div class="w-full h-full flex items-center justify-center text-gray-700"><i data-lucide="image-off"></i></div>'}
+                        </div>
+                        <div class="flex-grow">
+                            <div class="flex justify-between items-start">
+                                <h3 class="font-bold text-white text-sm">${art.title || 'Untitled'}</h3>
+                                <span class="text-xs text-gold-400 border border-gold-400/20 px-1 rounded">ID #${art.id}</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1 line-clamp-2">${art.description || 'No AI description generated yet.'}</p>
+                        </div>
+                    `;
+                    feed.appendChild(card);
+                });
+                lucide.createIcons();
+            } catch (e) {
+                console.error(e);
+                document.getElementById('artifact-feed').innerHTML = '<div class="text-red-400 text-center">Failed to connect to API. Ensure Docker is running.</div>';
+            }
+        }
+
+        // Add Source
+        document.getElementById('add-source-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Saving...';
+
+            const payload = {
+                name: document.getElementById('source-name').value,
+                base_url: document.getElementById('source-url').value,
+                cc0: document.getElementById('source-cc0').checked
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/sources`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    alert('Source added successfully!');
+                    e.target.reset();
+                } else {
+                    alert('Error adding source.');
+                }
+            } catch (err) {
+                alert('Connection error.');
+            } finally {
+                btn.innerHTML = originalText;
+                lucide.createIcons();
+            }
+        });
+
+        // Toggle Miner
+        async function toggleMiner(start) {
+            const endpoint = start ? '/scrape/start' : '/scrape/stop';
+            try {
+                const res = await fetch(`${API_BASE}${endpoint}`, { method: 'POST' });
+                if (res.ok) {
+                    fetchStatus();
+                }
+            } catch (e) {
+                alert('Connection error');
+            }
+        }
+
+        // Crawl Specific Source
+        async function crawlSource(id, name) {
+            if (!confirm(`Start crawling ${name}?`)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/scrape/start?source_id=${id}`, { method: 'POST' });
+                if (res.ok) {
+                    alert(`Agents dispatched to ${name}!`);
+                    fetchStatus();
+                }
+            } catch (e) {
+                alert('Failed to start crawl.');
+            }
+        }
+
+        // Delete Source
+        async function deleteSource(id) {
+            if (!confirm('Are you sure? This will remove the source configuration.')) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/sources/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    fetchSources();
+                } else {
+                    alert('Failed to delete source.');
+                }
+            } catch (e) {
+                alert('Connection error.');
+            }
+        }
+
+        // Init
+        fetchArtifacts();
+        fetchStatus();
+        // Poll every 2s for status, 10s for artifacts
+        setInterval(fetchStatus, 2000);
+        setInterval(fetchArtifacts, 10000);
+
+    </script>
+</body>
+
+</html>

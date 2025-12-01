@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+aiohttp
+sqlalchemy>=1.4
+psycopg2-binary    # if using Postgres; remove if not
+asyncpg
+beautifulsoup4
+pydantic>=2
