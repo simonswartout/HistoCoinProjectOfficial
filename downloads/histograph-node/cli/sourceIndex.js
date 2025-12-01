@@ -82,3 +82,13 @@ export async function loadSourcesFromIndex(indexPath) {
     const list = await readIndex(indexPath);
     return list.sources;
 }
+export async function appendArtifactToIndex(options) {
+    const safeTitle = options.artifactTitle?.slice(0, 60) || "Discovered artifact";
+    const friendlyName = `${options.sourceName}: ${safeTitle}`.slice(0, 90);
+    return addSourceToIndex({
+        indexPath: options.indexPath,
+        url: options.artifactUrl,
+        name: friendlyName,
+        notes: `Auto-discovered via ${options.sourceName}`,
+    });
+}

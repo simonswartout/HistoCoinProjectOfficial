@@ -19,6 +19,7 @@ export class MasterClient {
                 sourceId: artifact.sourceId,
                 sourceName: artifact.sourceName,
                 scrapedAt: artifact.scrapedAt,
+                llamaAssessment: artifact.llamaAssessment,
             }),
         };
         const headers = {

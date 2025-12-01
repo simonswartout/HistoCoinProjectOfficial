@@ -6,6 +6,8 @@ This package provides a headless, resource-aware CLI that lets any contributor r
 - Declarative source configuration (`config/sources.sample.json`).
 - Pluggable scraping strategies (generic HTML today, extensible for APIs like the Met).
 - Collection traversal that walks listing/search pages and hydrates each artifact detail view.
+- Auto-append of discovered artifact URLs into the shared global index for future random sampling.
+- Optional Meta Llama 3 validation via a local Ollama endpoint for historical relevance scoring.
 - Lightweight CC0 heuristics (keyword + metadata scanning) before sending artifacts.
 - Structured payloads with provenance metadata so the master can append validator-friendly bubbles.
 - Continuous mode with per-loop cooldowns to avoid hammering sources.
@@ -63,6 +65,7 @@ npm run dev -- add-source https://archives.si.edu/object/ark:/65665/123 \
 - `--index /custom/path/global.json` stores the registry elsewhere (e.g. `$HOME/.histograph`).
 - `run --target-url <url>` ensures the URL is present (adding it if necessary) and scrapes it immediately.
 - `run --random-global` picks a random entry from the registry when you want variety.
+- Every time the crawler surfaces a new artifact URL, it will automatically add that URL back into the registry (unless you pass `--no-append-artifacts`).
 
 ## Run the Miner
 Development mode (TypeScript + tsx):
@@ -85,6 +88,21 @@ Key flags:
 - `--target-url https://...` scrapes one URL and adds it to the global index.
 - `--random-global` selects a random record from the global index.
 - `--global-index /path/to/global.json` lets you relocate the registry.
+- `--no-append-artifacts` turns off the automatic artifact-to-registry sync.
+- `--llama-model llama3.1` and `--llama-endpoint http://localhost:11434/api/generate` configure the Llama classifier (defaults assume Ollama + `llama3`).
+- `--disable-llama` skips Llama validation entirely.
+
+### Llama 3 validation
+
+The CLI can call any Ollama-compatible `/generate` endpoint running an open-source Llama 3 model. By default it targets `http://localhost:11434/api/generate` and `llama3`. To enable it:
+
+```bash
+ollama pull llama3
+OLLAMA_HOST=http://localhost:11434 # default
+npm run dev -- run --llama-model llama3 --llama-endpoint http://localhost:11434/api/generate
+```
+
+For each artifact, the node asks Llama for a JSON verdict (`historical` vs `reject`). Rejected artifacts are skipped before submission, and successful verdicts are logged in the payload metadata for future validator review. Disable the step via `--disable-llama` if you do not have a local model.
 
 ## Packaged Download
 

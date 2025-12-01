@@ -7,7 +7,8 @@ import { MasterClient } from "./masterClient.js";
 import { scrapeSource } from "./scraper.js";
 import { logger } from "./logger.js";
 import { sleep } from "./utils.js";
-import { addSourceToIndex, loadSourcesFromIndex } from "./sourceIndex.js";
+import { addSourceToIndex, appendArtifactToIndex, loadSourcesFromIndex } from "./sourceIndex.js";
+import { classifyArtifactWithLlama } from "./llama.js";
 const DEFAULT_INTERVAL = 30;
 const DEFAULT_COOLDOWN = 5;
 const DEFAULT_GLOBAL_INDEX = "config/global-sources.json";
@@ -30,6 +31,10 @@ async function main() {
         .option("--random-global", "Pick a random source from the global index", false)
         .option("--target-url <url>", "Scrape a single URL; auto-adds it to the global index")
         .option("--target-name <name>", "Friendly name for --target-url (optional)")
+        .option("--no-append-artifacts", "Do not copy discovered artifact URLs into the global index")
+        .option("--llama-model <name>", "Meta Llama 3 model id (via Ollama or compatible endpoint)", process.env.LLAMA_MODEL ?? "llama3")
+        .option("--llama-endpoint <url>", "Endpoint for llama text generation", process.env.LLAMA_ENDPOINT ?? "http://localhost:11434/api/generate")
+        .option("--disable-llama", "Skip llama-based validation", false)
         .action(async (rawOpts) => {
         const runOpts = {
             masterUrl: rawOpts.masterUrl,
@@ -46,6 +51,10 @@ async function main() {
             randomFromGlobal: Boolean(rawOpts.randomGlobal),
             targetUrl: rawOpts.targetUrl,
             targetName: rawOpts.targetName,
+            appendArtifactsToIndex: rawOpts.appendArtifacts !== false,
+            llamaEnabled: !rawOpts.disableLlama,
+            llamaModel: rawOpts.llamaModel,
+            llamaEndpoint: rawOpts.llamaEndpoint,
         };
         await runNode(runOpts);
     });
@@ -166,6 +175,28 @@ async function processSources(sources, client, options) {
                 });
                 continue;
             }
+            if (options.llamaEnabled) {
+                const llamaVerdict = await classifyArtifactWithLlama(artifact.title, artifact.summary, artifact.rawTextSnippet, {
+                    endpoint: options.llamaEndpoint,
+                    model: options.llamaModel,
+                });
+                if (llamaVerdict) {
+                    artifact.llamaAssessment = llamaVerdict;
+                    artifact.metadata = {
+                        ...artifact.metadata,
+                        llamaAssessment: llamaVerdict,
+                    };
+                    if (llamaVerdict.verdict === "reject") {
+                        logger.info("Llama rejected artifact", {
+                            source: source.id,
+                            url: artifact.url,
+                            reason: llamaVerdict.reason,
+                            confidence: llamaVerdict.confidence,
+                        });
+                        continue;
+                    }
+                }
+            }
             if (options.dryRun) {
                 logger.info("Dry run payload", { artifact });
             }
@@ -177,6 +208,25 @@ async function processSources(sources, client, options) {
                     logger.error("Failed to submit artifact", {
                         source: source.id,
                         artifactUrl: artifact.url,
+                        error: error instanceof Error ? error.message : String(error),
+                    });
+                }
+            }
+            if (options.appendArtifactsToIndex) {
+                try {
+                    const result = await appendArtifactToIndex({
+                        indexPath: options.globalIndexPath,
+                        artifactUrl: artifact.url,
+                        artifactTitle: artifact.title,
+                        sourceName: artifact.sourceName,
+                    });
+                    if (result.added) {
+                        logger.info("Artifact URL stored in global index", { url: artifact.url });
+                    }
+                }
+                catch (error) {
+                    logger.warn("Failed to append artifact to global index", {
+                        url: artifact.url,
                         error: error instanceof Error ? error.message : String(error),
                     });
                 }

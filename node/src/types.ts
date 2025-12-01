@@ -9,6 +9,13 @@ export interface CollectionTraversal {
   maxItems?: number;
 }
 
+export interface LlamaAssessment {
+  verdict: "historical" | "reject";
+  confidence: number;
+  tags: string[];
+  reason: string;
+}
+
 export interface MiningSource {
   id: string;
   name: string;
@@ -36,6 +43,7 @@ export interface ScrapedArtifact {
   metadata: Record<string, unknown>;
   rawTextSnippet: string;
   scrapedAt: string;
+  llamaAssessment?: LlamaAssessment;
 }
 
 export interface NodeConfig {

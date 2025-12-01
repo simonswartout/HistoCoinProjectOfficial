@@ -149,11 +149,14 @@ Flags worth knowing:
 - `--target-url` – scrape a single URL (it is auto-added to the shared `config/global-sources.json`).
 - `--random-global` – pick a random entry from the global index when you want serendipity.
 - `--global-index <path>` – point both commands at a custom shared index file.
+- `--no-append-artifacts` – opt out of syncing every discovered artifact URL into the shared index.
+- `--llama-model`, `--llama-endpoint`, `--disable-llama` – control the built-in Meta Llama 3 historical relevance check (defaults assume a local Ollama daemon running `llama3`).
 
 Global source index helpers:
 
 - Add URLs once via `npm run dev -- add-source https://example.org/archive/123`.
 - Everyone shares the same `config/global-sources.json` (bundled in the downloadable ZIP) so random selection works across contributors.
+- Each time the crawler discovers a new artifact URL it automatically appends it to the registry (unless disabled), so future nodes can grab it via `--random-global` without manual curation.
 
 Prefer not to build locally? Download `downloads/histograph-node.zip` (served on the GitHub Pages site) and run `node cli/index.js` from the unzipped folder; it now ships with `package.json` (ESM) plus a ready-to-edit `sources.json` and `global-sources.json`.
 

@@ -41,5 +41,7 @@ Common Flags
 --dry-run               Print payloads without submitting to /master/ingest
 --target-url <url>      Scrape one URL (auto-adds it to global-sources.json)
 --random-global         Pick a random entry from global-sources.json
+--no-append-artifacts   Opt out of auto-copying discovered artifact URLs into the registry
+--llama-model / --llama-endpoint / --disable-llama  Configure optional Meta Llama 3 validation (defaults expect Ollama at http://localhost:11434)
 
 Need help? Email simon@luminarylabs.dev
