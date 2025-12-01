@@ -132,7 +132,9 @@ Flags worth knowing:
 - `--dry-run` – print payloads instead of POSTing (great for debugging CC0 heuristics).
 - `--interval` / `--cooldown` – throttle loops or per-source scraping to avoid hammering archives.
 
-See `node/README.md` for additional options, Docker packaging, and roadmap items.
+Prefer not to build locally? Download `downloads/histograph-node.zip` (served on the GitHub Pages site) and run `node cli/index.js` from the unzipped folder.
+
+See `node/README.md` for additional options, packaging, and roadmap items.
 
 ---
 

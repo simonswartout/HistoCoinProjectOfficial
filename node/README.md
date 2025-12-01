@@ -55,6 +55,27 @@ Key flags:
 - `--dry-run` prints payloads instead of POSTing.
 - `--fetch-remote-sources` pulls `GET /sources` from the master instead of reading JSON.
 
+## Packaged Download
+
+A prebuilt archive lives at `downloads/histograph-node.zip` in the repo root (and is served via GitHub Pages). It contains the compiled `cli/` bundle, `sources.sample.json`, and a lightweight README so users can unzip and run the miner with nothing but Node 18+.
+
+To refresh the downloadable archive after you change the CLI code:
+
+```bash
+cd node
+npm install            # once
+npm run build          # updates dist/
+cd ..
+rm -rf downloads/histograph-node/cli
+mkdir -p downloads/histograph-node/cli
+cp -r node/dist/* downloads/histograph-node/cli/
+cp node/config/sources.sample.json downloads/histograph-node/sources.sample.json
+cd downloads
+zip -r histograph-node.zip histograph-node
+```
+
+(Any equivalent automation is fine—the key requirement is that `downloads/histograph-node.zip` always ships the compiled CLI and sample config.)
+
 ## Roadmap
 - Support authenticated node tokens once the master issues API keys.
 - Add Playwright-powered scraping for interactive sources.
